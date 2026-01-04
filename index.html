@@ -1,0 +1,180 @@
+diff --git a/index.html b/index.html
+index 6d280863590cdc621093b5a8b7e0253d4808cb97..3aa91c97741df4ee4b19888b78d7b5ae60941b58 100644
+--- a/index.html
++++ b/index.html
+@@ -44,51 +44,51 @@ ACCESSIBILITY:
+   - Keyboard navigation support
+   - Screen reader friendly
+   - Skip navigation link
+   - Focus management
+
+ ================================================================================
+ -->
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+     <!-- ====================================================================
+          META TAGS & SECURITY
+          ==================================================================== -->
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+     <!-- Content Security Policy - Controls which resources can be loaded -->
+     <meta http-equiv="Content-Security-Policy" content="
+         default-src 'self';
+         script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+         font-src 'self' https://fonts.gstatic.com;
+         img-src 'self' data: blob:;
+         connect-src 'self' https://generativelanguage.googleapis.com https://cdnjs.cloudflare.com;
+     ">
+-    <title>Sales Offer Generator</title>
++    <title>SalesHUB</title>
+
+     <!-- ====================================================================
+          EXTERNAL JAVASCRIPT LIBRARIES
+          - All loaded with SRI (Subresource Integrity) hashes for security
+          - 'defer' attribute ensures scripts load after HTML parsing
+          ==================================================================== -->
+
+     <!-- Tailwind CSS - Utility-first CSS framework (used for utility classes) -->
+     <script src="https://cdn.tailwindcss.com"></script>
+
+     <!-- SheetJS (xlsx) - Excel file parsing for Import Excel feature -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+             crossorigin="anonymous"
+             referrerpolicy="no-referrer"></script>
+
+     <!-- html2pdf.js - PDF export functionality (Print/PDF button) -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.12.1/html2pdf.bundle.min.js"
+             integrity="sha512-D25Z8/1q2z65ZpJ3NzY6XiPZfwjhbv34OTQHDIZd+KPK+uWCovGt+fMkSzW8ArzCMFUgZt6Cdu7qoXNuy6a2GA=="
+             crossorigin="anonymous"
+             referrerpolicy="no-referrer"
+             defer></script>
+
+     <!-- jsPDF - Editable PDF generation -->
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+             crossorigin="anonymous"
+@@ -144,58 +144,51 @@ ACCESSIBILITY:
+          - #inputPanel (aside): 380px fixed width, left side, scrollable
+          - #previewArea (main): Fills remaining space, right side
+          ======================================================================== -->
+
+     <!-- Skip Navigation Link for Accessibility (keyboard users) -->
+     <a href="#inputPanel" class="skip-link">Skip to main content</a>
+
+     <!-- ========================================================================
+          LEFT PANEL: INPUT FORM (#inputPanel)
+          ========================================================================
+          Contains all form fields for entering property data.
+          Sections:
+          1. Header (title + template selector)
+          2. Import buttons (Excel, JSON, AI Import)
+          3. Property Category toggle (Off-Plan / Ready)
+          4. Property Details (project name, unit info, areas)
+          5. Financial Breakdown (prices, fees, calculations)
+          6. Ready Property section (status, occupancy - shown for Ready only)
+          7. Payment Plan table (Off-Plan only)
+          8. Floor Plan upload
+          9. Action buttons (Settings, Export, Save, Clear, Print)
+          ======================================================================== -->
+     <aside id="inputPanel" role="complementary" aria-label="Property information form">
+         <div class="panel-header">
+             <div class="panel-header-row">
+-                <h1 class="app-title">Sales Offer Generator</h1>
+-                <div class="beta-toggle-container" id="betaToggleContainer">
+-                    <label class="beta-toggle">
+-                        <input type="checkbox" id="betaToggle">
+-                        <span class="beta-slider"></span>
+-                        <span class="beta-label">BETA</span>
+-                    </label>
+-                </div>
++                <h1 class="app-title">SalesHUB</h1>
+             </div>
+             <div class="template-selector">
+                 <label for="templateSelect" class="visually-hidden">Document template layout</label>
+                 <select id="templateSelect" class="input-field" aria-label="Select document template layout">
+                     <option value="landscape">Landscape</option>
+                     <option value="portrait">Portrait</option>
+                     <option value="minimal">Minimal</option>
+                 </select>
+             </div>
+         </div>
+
+         <!-- ====================================================================
+              IMPORT SECTION - File Upload Buttons
+              ====================================================================
+              Three import methods:
+              1. Import Excel: Parse Excel (.xlsx, .xls) files with property data
+              2. Import JSON: Load saved state from exported JSON files
+              3. AI Import: AI-powered document parser (extracts data from PDFs/images)
+
+              TECHNICAL:
+              - Hidden file inputs triggered by clicking labels
+              - accept attribute limits file types
+              - SheetJS handles Excel parsing
+              - Google Gemini API handles AI parsing (requires API key)
+              ==================================================================== -->
+@@ -740,50 +733,62 @@ ACCESSIBILITY:
+         </div>
+
+         <hr class="section-divider">
+
+         <!-- Floor Plan Upload -->
+         <div class="input-group">
+             <label class="input-label" for="floorplan_upload">Floor Plan Image</label>
+             <label class="file-upload-btn" tabindex="0" role="button" aria-label="Upload floor plan image">
+                 <span id="floorPlanFileName">Choose file...</span>
+                 <input type="file" id="floorplan_upload" accept="image/png,image/jpeg,image/jpg,image/webp" hidden aria-label="Select floor plan image file">
+             </label>
+             <div id="floorPlanError" role="alert" aria-live="assertive" class="field-error hidden"></div>
+         </div>
+
+         <hr class="section-divider">
+
+         <!-- Action Buttons -->
+         <div class="action-buttons">
+             <button id="settingsBtn" class="btn btn-secondary" type="button" aria-label="Open settings and branding options">
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                     <circle cx="12" cy="12" r="3"/>
+                 </svg>
+                 <span class="visually-hidden">Settings</span>
+             </button>
++            <button id="exportEditableBtn" class="btn btn-secondary" type="button" aria-label="Export editable PDF">
++                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
++                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/>
++                </svg>
++                <span class="visually-hidden">Export Editable PDF</span>
++            </button>
++            <button id="exportHybridBtn" class="btn btn-secondary" type="button" aria-label="Export hybrid PDFs">
++                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
++                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
++                </svg>
++                <span class="visually-hidden">Export Hybrid PDFs</span>
++            </button>
+             <button id="exportBtn" class="btn btn-secondary" type="button" aria-label="Open export options">
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                 </svg>
+                 <span class="visually-hidden">Export</span>
+             </button>
+             <button id="saveTemplateBtn" class="btn btn-secondary" type="button" aria-label="Save current offer as template">
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                 </svg>
+                 <span class="visually-hidden">Save Template</span>
+             </button>
+         </div>
+
+         <div class="action-buttons mt-3">
+             <button id="clearAllBtn" class="btn btn-danger flex-1" type="button">Clear All</button>
+             <button id="printBtn" class="btn btn-primary flex-1" type="button">Print / PDF</button>
+         </div>
+     </aside>
+
+     <!-- ========================================================================
+          RIGHT PANEL: DOCUMENT PREVIEW (#previewArea)
+          ========================================================================
+          Shows a live A4-sized preview of the sales offer document.
+          Updates in real-time as user types in the input panel.

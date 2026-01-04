@@ -1,0 +1,80 @@
+diff --git a/css/print.css b/css/print.css
+index c7f6b96ba36afa9e7429a58561fd90c60f2d6aba..2b87a2b2e35c74e6387ace50e20f2eee2b1f37fb 100644
+--- a/css/print.css
++++ b/css/print.css
+@@ -183,50 +183,75 @@ img {
+     height: auto !important;                   /* Maintain aspect ratio */
+ }
+
+ /* ============================================
+    PAGE BREAK PREVENTION
+    ============================================
+    Prevents awkward page breaks inside content.
+    Keeps tables and content rows together on same page.
+    ============================================ */
+ /* Prevent page breaks inside tables */
+ .data-table,
+ .content-row,
+ tr,
+ td,
+ th {
+     page-break-inside: avoid !important;       /* Don't split these elements across pages */
+ }
+
+ /* Scale floor plan image to fit print page */
+ #floorPlanImg {
+     max-height: 110mm !important;              /* Max height for landscape (leave room for header/footer) */
+     width: auto !important;                    /* Maintain aspect ratio */
+     object-fit: contain !important;            /* Scale to fit without cropping */
+ }
+
++/* Align landscape floor plan frame to preview proportions */
++#a4Page.template-landscape .column-right {
++    padding-top: 0 !important;
++    padding-bottom: 0 !important;
++    align-items: stretch !important;
++    justify-content: flex-start !important;
++}
++
++#a4Page.template-landscape .floorplan-frame {
++    height: 100% !important;
++    width: 100% !important;
++    max-height: 100% !important;
++    padding: 0 !important;
++    display: flex !important;
++    align-items: center !important;
++    justify-content: center !important;
++}
++
++#a4Page.template-landscape #floorPlanImg {
++    width: 100% !important;
++    height: 100% !important;
++    max-width: 100% !important;
++    max-height: 100% !important;
++}
++
+ /* ============================================
+    UI CONTROLS HIDING
+    ============================================
+    Hides all screen-only interactive elements.
+    These should not appear on printed document.
+    ============================================ */
+ /* Hide all modals and UI controls */
+ .modal,
+ .leaflet-control-zoom,
+ .zoom-controls,
+ .btn-container,
+ .ui-controls {
+     display: none !important;                  /* Hide all UI controls */
+ }
+
+ /* Note: print-color-adjust is handled by the * selector above for all elements */
+
+ /* ============================================
+    PORTRAIT-SPECIFIC PRINT ADJUSTMENTS
+    ============================================
+    When using portrait template (210mm × 297mm):
+    - Stack columns vertically instead of side-by-side
+    - Reduce floor plan height to fit tall page
+
+    WHY:

@@ -1,0 +1,104 @@
+diff --git a/css/preview.css b/css/preview.css
+index 0b762ece871a49a27bb2b070ed554aae7fb5ff6e..d6a83c6bd2939b9166d8ee2f13a6f3375cf3a05e 100644
+--- a/css/preview.css
++++ b/css/preview.css
+@@ -35,50 +35,99 @@ DOCUMENT STRUCTURE:
+   │       └── .floorplan-frame
+   │           └── #floorPlanImg
+   ├── .footer-area                   (project name, bottom-right)
+   │   ├── .footer-proj               (PROJECT NAME)
+   │   └── .footer-sub                (SALE OFFER)
+   └── .created-by-footer             (agent credit, bottom-center)
+
+ TABLE STRUCTURE:
+   .data-table (Property Details, Financial Breakdown)
+   ├── caption.table-title            ("PROPERTY DETAILS")
+   └── tbody
+       └── tr
+           ├── td.row-label           (field name)
+           └── td.row-value           (field value)
+
+   .payment-plan-table
+   ├── caption.table-title            ("PAYMENT PLAN 30:70")
+   ├── thead
+   │   └── tr.table-header-row
+   │       ├── th                     (Date of Payment)
+   │       ├── th                     (%)
+   │       └── th                     (Amount AED)
+   └── tbody
+       └── tr (multiple rows)
+
++PROJECT GROUP MAP (IDENTIFIER LISTS)
++  Property Details Group
++  - Project Name: #disp_project_footer
++  - Unit No: #display-unit-number
++  - Unit Type: #disp_unit_type
++  - Unit Model: #disp_title
++  - Maid's Room: #disp_row_maidsroom (if present)
++  - Laundry Room: #disp_row_laundry (if present)
++  - Store Room: #disp_row_store (if present)
++  - Views: #disp_views
++  - Internal Area (Sq.Ft): #disp_internal
++  - Balcony Area (Sq.Ft): #disp_balcony
++  - Total Area (Sq.Ft): #display-total-area
++
++  Financial Breakdown Group
++  - Original Price: #disp_original_price
++  - Selling Price: #disp_selling_price
++  - Paid Percentage: #disp_amount_paid_percent (if present)
++  - Refund (40% of Original Price): #disp_refund
++  - Resale Clause: #disp_resale_clause (if present)
++  - Balance Resale Clause (AED): #disp_balance_resale
++  - Premium (Selling Price - Original Price): #disp_premium
++  - Admin Fees (SAAS): #disp_admin_fees
++  - ADGM Reg Fees (2% Original Price): #disp_adgm_transfer
++  - ADGM Termination fee: #disp_adgm_termination
++  - ADGM Electronic Service fee: #disp_adgm_electronic
++  - Agency Fees (2% of Selling Price + Vat): #disp_agency_fees
++  - Total Initial Payments: #disp_total
++
++  Payment Plan Group
++  - Table: #previewPaymentPlanTable
++  - Body: #payment_plan_tbody
++
++CATEGORY NOTES (OFF-PLAN vs READY)
++  Off-Plan (Primary)
++  - Off-Plan rows are shown/hidden via #disp_row_refund, #disp_row_balance_resale,
++    #disp_row_premium and the Payment Plan group.
++
++  Ready (Secondary)
++  - Property Status Table: #propertyStatusTable
++  - Project Completion: #disp_projecthandover (row: #disp_row_projecthandover)
++  - Project Age: #disp_projectage (row: #disp_row_projectage)
++  - Unit Received: #disp_unithandover (row: #disp_row_unithandover)
++  - Unit Ownership: #disp_unitownership (row: #disp_row_unitownership)
++  - Status: #disp_occupancy (row: #disp_row_occupancy)
++  - Current Rent: #disp_currentrent (row: #disp_row_currentrent)
++  - Lease Until: #disp_leaseuntil (row: #disp_row_leaseuntil)
++  - Service Charge: #disp_servicecharge (row: #disp_row_servicecharge)
++
+ ================================================================================
+ */
+
+ /* ============================================
+    A4 PAGE CONTAINER
+    ============================================
+    FRONTEND: The white "paper" document in the preview panel
+    HTML ID: #a4Page
+    LOCATION: Inside #previewArea (right side of screen)
+
+    This is the root container for the entire sales offer document.
+    Width/height are set per template (landscape=297x210mm, portrait=210x297mm).
+ */
+ #a4Page {
+     background: var(--paper-bg);               /* Off-white paper color (#fafafa) */
+     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);   /* Shadow makes paper "float" */
+     position: relative;                        /* For absolute child positioning */
+     box-sizing: border-box;
+     transform-origin: center top;              /* Scale from top-center (zoom feature) */
+     overflow: hidden;                          /* Clip overflow content */
+     border: 1px solid var(--text-secondary);   /* Light border defines edge */
+ }
+ /* Note: Width & height set in css/templates/*.css */
+
+ /* ============================================

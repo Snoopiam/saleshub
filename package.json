@@ -1,0 +1,36 @@
+diff --git a/package.json b/package.json
+index 5b08c67456c5698f2fb7a240b0cb340b10613668..26d21cae828be0c230dee21decf2aab960e3f61a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,29 +1,29 @@
+ {
+-  "name": "sales-offer-generator",
++  "name": "saleshub",
+   "version": "1.0.0",
+-  "description": "Professional real estate sales offer document generator",
++  "description": "SalesHUB real estate offer document generator",
+   "type": "module",
+   "scripts": {
+     "start": "npx http-server -p 8000 -c-1",
+     "test": "vitest",
+     "test:coverage": "vitest run --coverage",
+     "lint": "eslint js/",
+     "lint:fix": "eslint js/ --fix"
+   },
+   "keywords": [
+     "real-estate",
+     "sales-offer",
+     "document-generator",
+     "pdf-export"
+   ],
+   "author": "",
+   "license": "MIT",
+   "devDependencies": {
+     "@testing-library/dom": "^10.0.0",
+     "@vitest/coverage-v8": "^4.0.16",
+     "@vitest/ui": "^4.0.16",
+     "eslint": "^9.0.0",
+     "jsdom": "^27.4.0",
+     "vitest": "^4.0.16",
+     "xlsx": "^0.18.5"
+   },
