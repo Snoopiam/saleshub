@@ -2,63 +2,182 @@
  * Puppeteer PDF Service
  * Generates high-quality PDFs with real selectable text
  * Layout matches the live preview exactly
+ *
+ * FIXES APPLIED:
+ * - Added mutex lock to prevent race conditions on browser access
+ * - Added retry logic for connection errors
+ * - Improved error handling for browser disconnection
+ * - Fixed: Convert Uint8Array to Buffer for proper response handling
  */
 
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs').promises;
 
+// Connection error patterns that should trigger retry
+const CONNECTION_ERROR_PATTERNS = [
+  'Connection closed',
+  'Target closed',
+  'Protocol error',
+  'Session closed',
+  'Browser disconnected',
+  'Navigation failed'
+];
+
 class PuppeteerPdfService {
   constructor() {
     this.browser = null;
+    this.browserLock = Promise.resolve(); // Mutex for browser access
   }
 
   /**
-   * Initialize browser instance (reuse for performance)
+   * Check if error is a connection-related error that warrants retry
+   */
+  isConnectionError(error) {
+    const message = error?.message || '';
+    return CONNECTION_ERROR_PATTERNS.some(pattern => message.includes(pattern));
+  }
+
+  /**
+   * Initialize browser instance with mutex lock to prevent race conditions
+   * Multiple concurrent requests will wait for the lock before accessing browser
    */
   async getBrowser() {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: 'new',
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--font-render-hinting=none'
-        ]
+    return new Promise((resolve, reject) => {
+      this.browserLock = this.browserLock.then(async () => {
+        try {
+          // Check if browser exists AND is still connected
+          if (!this.browser || !this.browser.isConnected()) {
+            if (this.browser) {
+              console.log('[Puppeteer] Browser disconnected, relaunching...');
+              try {
+                await this.browser.close();
+              } catch (e) {
+                // Ignore close errors on disconnected browser
+              }
+              this.browser = null;
+            }
+
+            console.log('[Puppeteer] Launching browser...');
+            this.browser = await puppeteer.launch({
+              headless: 'new',
+              args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--font-render-hinting=none'
+              ]
+            });
+
+            // Handle browser disconnect events
+            this.browser.on('disconnected', () => {
+              console.log('[Puppeteer] Browser disconnected event');
+              this.browser = null;
+            });
+
+            console.log('[Puppeteer] Browser launched successfully');
+          }
+          resolve(this.browser);
+        } catch (error) {
+          console.error('[Puppeteer] Failed to get browser:', error.message);
+          reject(error);
+        }
       });
-    }
-    return this.browser;
+    });
   }
 
   /**
-   * Generate PDF from offer data
+   * Force browser restart - used after connection errors
+   */
+  async forceRestartBrowser() {
+    console.log('[Puppeteer] Force restarting browser...');
+    if (this.browser) {
+      try {
+        await this.browser.close();
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
+    this.browser = null;
+    return this.getBrowser();
+  }
+
+  /**
+   * Generate PDF from offer data with retry logic
    * @param {Object} data - Offer data (matches frontend state)
    * @param {Object} branding - Branding settings (logo, colors, etc.)
    * @param {string} template - Template type: 'landscape', 'portrait', 'minimal'
+   * @param {number} maxRetries - Maximum retry attempts (default: 2)
    * @returns {Buffer} PDF buffer
    */
-  async generatePDF(data, branding = {}, template = 'landscape') {
+  async generatePDF(data, branding = {}, template = 'landscape', maxRetries = 2) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        return await this._generatePDFInternal(data, branding, template);
+      } catch (error) {
+        lastError = error;
+
+        // Check if this is a connection error that warrants retry
+        if (this.isConnectionError(error) && attempt <= maxRetries) {
+          console.log(`[Puppeteer] Connection error on attempt ${attempt}/${maxRetries + 1}: ${error.message}`);
+          console.log('[Puppeteer] Restarting browser and retrying...');
+
+          // Force browser restart before retry
+          try {
+            await this.forceRestartBrowser();
+          } catch (restartError) {
+            console.error('[Puppeteer] Failed to restart browser:', restartError.message);
+          }
+
+          continue;
+        }
+
+        // Non-recoverable error or max retries exceeded
+        throw error;
+      }
+    }
+
+    // Should not reach here, but just in case
+    throw lastError;
+  }
+
+  /**
+   * Internal PDF generation logic (called by generatePDF with retry wrapper)
+   */
+  async _generatePDFInternal(data, branding, template) {
     const browser = await this.getBrowser();
-    const page = await browser.newPage();
+    let page;
 
     try {
+      page = await browser.newPage();
+
       // Generate HTML from template
       const html = this.generateHTML(data, branding, template);
 
-      // Set content
+      // Set content with reasonable timeout
       await page.setContent(html, {
-        waitUntil: ['load', 'networkidle0'],
+        waitUntil: ['load', 'domcontentloaded'],
         timeout: 30000
       });
 
-      // Wait for fonts to load
-      await page.evaluateHandle('document.fonts.ready');
+      // Wait for fonts with timeout to prevent hanging
+      try {
+        await Promise.race([
+          page.evaluateHandle('document.fonts.ready'),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Font timeout')), 10000)
+          )
+        ]);
+      } catch (fontError) {
+        console.warn('[Puppeteer] Font loading timeout, continuing anyway');
+      }
 
       // Generate PDF
       const isPortrait = template === 'portrait';
-      const pdfBuffer = await page.pdf({
+      const pdfData = await page.pdf({
         format: 'A4',
         landscape: !isPortrait,
         printBackground: true,
@@ -66,10 +185,18 @@ class PuppeteerPdfService {
         margin: { top: 0, right: 0, bottom: 0, left: 0 }
       });
 
-      return pdfBuffer;
+      // FIXED: Puppeteer returns Uint8Array, convert to Node.js Buffer
+      return Buffer.from(pdfData);
 
     } finally {
-      await page.close();
+      // Safe page close with error handling
+      if (page) {
+        try {
+          await page.close();
+        } catch (closeError) {
+          console.error('[Puppeteer] Error closing page:', closeError.message);
+        }
+      }
     }
   }
 
@@ -505,7 +632,11 @@ class PuppeteerPdfService {
    */
   async close() {
     if (this.browser) {
-      await this.browser.close();
+      try {
+        await this.browser.close();
+      } catch (error) {
+        console.error('[Puppeteer] Error closing browser:', error.message);
+      }
       this.browser = null;
     }
   }

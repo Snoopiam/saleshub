@@ -4,23 +4,30 @@ const pdfController = require('../controllers/pdfController');
 const templateController = require('../controllers/templateController');
 const settingsController = require('../controllers/settingsController');
 
+/**
+ * Async handler wrapper to catch errors in async route handlers
+ * Ensures all async errors are properly forwarded to Express error middleware
+ */
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
 // ===== PDF Generation =====
-router.post('/pdf/generate', pdfController.generatePDF);
-router.post('/pdf/preview', pdfController.generatePreview);
+router.post('/pdf/generate', asyncHandler(pdfController.generatePDF));
+router.post('/pdf/preview', asyncHandler(pdfController.generatePreview));
 
 // ===== Templates =====
-router.get('/templates', templateController.listTemplates);
-router.post('/templates', templateController.createTemplate);
-router.get('/templates/:id', templateController.getTemplate);
-router.put('/templates/:id', templateController.updateTemplate);
-router.delete('/templates/:id', templateController.deleteTemplate);
+router.get('/templates', asyncHandler(templateController.listTemplates));
+router.post('/templates', asyncHandler(templateController.createTemplate));
+router.get('/templates/:id', asyncHandler(templateController.getTemplate));
+router.put('/templates/:id', asyncHandler(templateController.updateTemplate));
+router.delete('/templates/:id', asyncHandler(templateController.deleteTemplate));
 
 // ===== Settings =====
-router.get('/settings', settingsController.getSettings);
-router.put('/settings', settingsController.updateSettings);
+router.get('/settings', asyncHandler(settingsController.getSettings));
+router.put('/settings', asyncHandler(settingsController.updateSettings));
 
 // ===== Branding =====
-router.get('/branding', settingsController.getBranding);
-router.put('/branding', settingsController.updateBranding);
+router.get('/branding', asyncHandler(settingsController.getBranding));
+router.put('/branding', asyncHandler(settingsController.updateBranding));
 
 module.exports = router;
