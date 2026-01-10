@@ -3,9 +3,7 @@
   "version": "2.0.0",
   "description": "Professional real estate sales offer document generator for UAE properties",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "nodemon server.js",
-    "dev:frontend": "npx http-server -p 8000 -c-1",
+    "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -23,7 +21,6 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.2.0",
-    "concurrently": "^8.2.2",
     "eslint": "^8.56.0",
     "jsdom": "^27.4.0",
     "nodemon": "^3.1.11",

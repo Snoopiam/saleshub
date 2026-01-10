@@ -3,8 +3,8 @@
  * Uses Puppeteer backend for high-quality PDFs with real selectable text
  */
 
-// API endpoint - configurable via environment or defaults to localhost
-const API_BASE = window.SALESHUB_API_URL || 'http://localhost:3001/api';
+// API endpoint - relative path (same server serves frontend + API)
+const API_BASE = '/api';
 
 /**
  * Generate PDF using Puppeteer backend
@@ -15,7 +15,7 @@ const API_BASE = window.SALESHUB_API_URL || 'http://localhost:3001/api';
  */
 export async function generatePDF(data, branding = {}, template = 'landscape') {
   try {
-    console.log('[PDF Export] Sending to backend:', API_BASE);
+    console.log('[PDF Export] Generating PDF...');
 
     const response = await fetch(`${API_BASE}/pdf/generate`, {
       method: 'POST',
@@ -54,9 +54,8 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
  */
 export async function checkBackendHealth() {
   try {
-    const response = await fetch(`${API_BASE.replace('/api', '')}/health`, {
-      method: 'GET',
-      timeout: 3000
+    const response = await fetch('/health', {
+      method: 'GET'
     });
     return response.ok;
   } catch {
