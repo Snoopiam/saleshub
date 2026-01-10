@@ -1,0 +1,352 @@
+/*
+================================================================================
+MINIMAL.CSS - Minimal Template (Modern, Clean Design)
+================================================================================
+
+FRONTEND REFERENCE:
+  - Template selector: Dropdown in sidebar header (id="templateSelect")
+  - Applied when: User selects "Minimal" template
+  - Target element: #a4Page (the preview document on right side of screen)
+
+PAGE STRUCTURE (Visual Map):
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ .header-bar (subtle gradient fade, 2mm)                           [LOGO]   │
+  ├─────────────────────────────────────────────────────────────────────────────┤
+  │ .document-header                                                            │
+  │   ├── .section-label (small "UNIT MODEL" text)                             │
+  │   └── .main-title (e.g., "2 BEDROOM + MAID")                               │
+  ├─────────────────────────────┬───────────────────────────────────────────────┤
+  │ .column-left (42%)          │ .column-right (58%)                           │
+  │                             │                                               │
+  │ ┌─────────────────────────┐ │  ┌───────────────────────────────────────┐   │
+  │ │ PROPERTY DETAILS        │ │  │                                       │   │
+  │ │ (thin border titles)    │ │  │  #floorPlanImg                        │   │
+  │ └─────────────────────────┘ │  │  (no shadow, rounded corners)         │   │
+  │ ┌─────────────────────────┐ │  │                                       │   │
+  │ │ FINANCIAL BREAKDOWN     │ │  └───────────────────────────────────────┘   │
+  │ │ (teal total highlight)  │ │                                               │
+  │ └─────────────────────────┘ │                        ┌───────────────────┐ │
+  │ ┌─────────────────────────┐ │                        │ .footer-area      │ │
+  │ │ PAYMENT PLAN            │ │                        │ (muted colors)    │ │
+  │ └─────────────────────────┘ │                        └───────────────────┘ │
+  └─────────────────────────────┴───────────────────────────────────────────────┘
+
+DESIGN PHILOSOPHY:
+  - Subtle header: Gradient fade (2mm) instead of solid bar (8mm)
+  - Muted colors: Grays and neutrals instead of bold colors
+  - Thin borders: 1px borders for clean separation
+  - No shadows: Clean, flat design
+  - Lighter typography: Less bold weights, more letter-spacing
+
+VISUAL DIFFERENCES FROM LANDSCAPE:
+  - Header bar: gradient fade (2mm) vs solid stripe (8mm)
+  - Logo: smaller (30px), slightly transparent (opacity: 0.9)
+  - Table titles: bottom border vs colored text
+  - Total row: teal color highlight vs bold black
+  - Column split: 42%/58% vs 40%/60%
+  - More spacing: 40px column gap vs 30px
+
+IDEAL FOR:
+  - Modern, minimalist branding
+  - Professional presentations
+  - Content-focused documents
+
+================================================================================
+*/
+
+/* ============================================
+   A4 PAGE CONTAINER - Minimal Template
+   ============================================
+   FRONTEND: The white A4 document preview on right side of screen
+   HTML ID: #a4Page
+   DIMENSIONS: 297mm × 210mm (landscape, same as default)
+
+   Uses CSS variable --white for background.
+*/
+#a4Page.template-minimal {
+    width: 297mm;
+    height: 210mm;
+    padding: 15mm 20mm;                        /* More generous margins */
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+}
+
+/* ============================================
+   HEADER BAR - Subtle Gradient
+   ============================================
+   FRONTEND: Thin gradient bar at top (barely visible)
+   HTML CLASS: .header-bar
+
+   Unlike solid bar in landscape/portrait, this uses a
+   gradient fade from primary color to transparent.
+*/
+.template-minimal .header-bar {
+    height: 2mm;                               /* Much thinner than landscape (8mm) */
+    background: linear-gradient(90deg, var(--primary-color, #62c6c1) 0%, transparent 100%);
+}
+
+/* ============================================
+   LOGO AREA
+   ============================================
+   FRONTEND: Company logo in top-right corner
+   HTML CLASS: .logo-area
+   HTML ID (image): #logoImg
+
+   Set via: Settings modal → Branding tab → Upload Logo
+   Slightly transparent for minimal look.
+*/
+.template-minimal .logo-area {
+    top: 15mm;
+    right: 20mm;
+}
+
+.template-minimal .logo-img {
+    height: 30px;                              /* Smaller than landscape (60px) */
+    opacity: 0.9;                              /* Slightly faded for subtle look */
+}
+
+/* ============================================
+   DOCUMENT HEADER / MAIN TITLE
+   ============================================
+   FRONTEND: Section label + large title
+   HTML CLASS: .document-header, .section-label, .main-title
+   HTML ID: #disp_title (the title text)
+
+   Section label shows "UNIT MODEL" above the actual model name.
+   Value comes from: Sidebar → Unit Model dropdown
+*/
+.template-minimal .document-header {
+    margin-top: 10mm;
+    margin-bottom: 20px;
+}
+
+/* Small label above title (e.g., "UNIT MODEL") */
+.template-minimal .section-label {
+    font-size: 0.625rem;                       /* 10px */
+    color: var(--primary-color, #62c6c1);
+    letter-spacing: 0.2em;                     /* Wide spacing for minimal style */
+}
+
+/* Main title (e.g., "2 BEDROOM + MAID") */
+.template-minimal .main-title {
+    font-size: 28px;                           /* Smaller than landscape (40px) */
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: -0.03em;                   /* Tight letter spacing */
+}
+
+/* ============================================
+   CONTENT ROW (Two-Column Layout)
+   ============================================
+   FRONTEND: Container for tables and floor plan
+   HTML CLASS: .content-row
+
+   Wider gap (40px) than landscape (30px) for cleaner separation.
+*/
+.template-minimal .content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 40px;                                 /* Wider gap than landscape */
+}
+
+/* ============================================
+   LEFT COLUMN - Data Tables
+   ============================================
+   FRONTEND: Contains all data tables
+   HTML CLASS: .column-left
+   WIDTH: 42% (slightly wider than landscape 40%)
+
+   CONTAINS:
+   1. PROPERTY DETAILS table (#propertyDetailsTable)
+   2. FINANCIAL BREAKDOWN table (#financialTable)
+   3. PAYMENT PLAN table (#previewPaymentPlanTable) - Off-Plan only
+*/
+.template-minimal .column-left {
+    width: 42%;
+}
+
+/* ============================================
+   RIGHT COLUMN - Floor Plan
+   ============================================
+   FRONTEND: Contains floor plan image
+   HTML CLASS: .column-right
+   WIDTH: 58% (slightly narrower than landscape 60%)
+*/
+.template-minimal .column-right {
+    width: 58%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 20px;
+}
+
+/* ============================================
+   TABLE TITLES
+   ============================================
+   FRONTEND: Section headers like "PROPERTY DETAILS", "FINANCIAL BREAKDOWN"
+   HTML CLASS: .table-title
+
+   Uses bottom border instead of colored text for minimal look.
+*/
+.template-minimal .table-title {
+    font-size: 0.625rem;                       /* 10px */
+    letter-spacing: 0.15em;
+    color: var(--text-gray-medium);            /* Muted gray instead of teal */
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+}
+
+/* ============================================
+   DATA TABLES
+   ============================================
+   FRONTEND: Property Details and Financial Breakdown tables
+   HTML CLASS: .data-table
+*/
+.template-minimal .data-table {
+    font-size: 0.625rem;                       /* 10px */
+    margin-bottom: 20px;                       /* More space between tables */
+}
+
+/* Table headers */
+.template-minimal .data-table th {
+    color: var(--text-gray-medium);
+    font-size: 0.5625rem;                      /* 9px */
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Table cells */
+.template-minimal .data-table td {
+    padding: 5px 0;                            /* More padding than landscape */
+    border-bottom: 1px solid var(--border-lighter);
+}
+
+/* Row labels (left column - field names) */
+.template-minimal .row-label {
+    color: var(--text-gray-medium);
+    font-weight: 500;                          /* Lighter than landscape (600) */
+}
+
+/* Row values (right column - field values) */
+.template-minimal .row-value {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+/* ============================================
+   TOTAL ROW - Teal Highlight
+   ============================================
+   FRONTEND: Total Initial Payment row in Financial table
+   HTML CLASS: .total-row
+
+   Uses teal border and teal value color for emphasis.
+*/
+.template-minimal .total-row td {
+    border-top: 2px solid var(--primary-color, #62c6c1);
+    border-bottom: none;
+    padding-top: 10px;
+    font-size: 12px;                           /* Larger than regular rows */
+}
+
+.template-minimal .total-row .row-label {
+    color: var(--text-dark);
+}
+
+.template-minimal .total-row .row-value {
+    color: var(--primary-color, #62c6c1);      /* Teal highlight */
+    font-weight: 800;
+}
+
+/* ============================================
+   PAYMENT PLAN TABLE
+   ============================================
+   FRONTEND: Payment milestones table (Off-Plan only)
+   HTML CLASS: .payment-plan-table
+   HTML ID: #previewPaymentPlanTable
+*/
+.template-minimal .payment-plan-table {
+    margin-top: 25px;
+}
+
+.template-minimal .payment-plan-table th {
+    font-size: 0.5625rem;                      /* 9px */
+    color: var(--text-gray-medium);
+}
+
+.template-minimal .payment-plan-table td {
+    padding: 4px 0;
+}
+
+/* ============================================
+   FLOOR PLAN IMAGE
+   ============================================
+   FRONTEND: Uploaded floor plan image
+   HTML ID: #floorPlanImg
+
+   No shadow (filter: none), subtle rounded corners.
+*/
+.template-minimal #floorPlanImg {
+    max-height: 120mm;                         /* Shorter than landscape (140mm) */
+    filter: none;                              /* No drop shadow */
+    border-radius: 4px;                        /* Subtle rounded corners */
+}
+
+/* Placeholder when no image uploaded */
+.template-minimal .img-placeholder {
+    border-color: var(--border-light);
+    border-radius: 4px;
+}
+
+/* ============================================
+   FOOTER AREA (Project Name & Sale Offer)
+   ============================================
+   FRONTEND: Project name and "SALE OFFER" in bottom-right
+   HTML CLASS: .footer-area
+   HTML IDs: #disp_project_footer (project name)
+
+   Uses muted colors for minimal look.
+*/
+.template-minimal .footer-area {
+    bottom: 15mm;
+    right: 20mm;
+}
+
+/* Project Name (muted gray) */
+.template-minimal .footer-proj {
+    font-size: 12px;                           /* Smaller than landscape (18px) */
+    font-weight: 700;
+    color: var(--text-gray-medium);            /* Muted instead of dark */
+    letter-spacing: 0.1em;
+}
+
+/* "SALE OFFER" subtitle */
+.template-minimal .footer-sub {
+    font-size: 0.5625rem;                      /* 9px */
+    color: var(--text-gray-medium);
+    letter-spacing: 0.15em;
+}
+
+/* ============================================
+   FOOTNOTE / DISCLAIMER
+   ============================================
+   FRONTEND: Small disclaimer text
+   HTML CLASS: .footnote
+*/
+.template-minimal .footnote {
+    font-size: 8px;
+    color: var(--text-gray-medium);
+    max-width: 50%;                            /* Narrower than landscape (60%) */
+    line-height: 1.4;
+}
+
+/* ============================================
+   DIVIDER ROW
+   ============================================
+   FRONTEND: Empty row used for spacing in tables
+   HTML CLASS: .divider-row
+*/
+.template-minimal .divider-row {
+    height: 15px;
+}

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "build:css": "tailwindcss -i ./css/tailwind-source.css -o ./css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./css/tailwind-source.css -o ./css/tailwind.css --watch",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint js/ backend/src/"
@@ -21,9 +23,12 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.2.0",
+    "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "jsdom": "^27.4.0",
     "nodemon": "^3.1.11",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
     "vitest": "^1.2.0"
   }
 }

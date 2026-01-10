@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: saleshub-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: saleshub
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: saleshub-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/saleshub
+    depends_on:
+      - mongodb
+    volumes:
+      - ./uploads:/app/uploads
+
+  frontend:
+    image: nginx:alpine
+    container_name: saleshub-frontend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,800 @@
+/*
+================================================================================
+BETA.CSS - Experimental Features Styles
+================================================================================
+
+PURPOSE: Styles for experimental beta features that can be toggled on/off.
+         All beta features are hidden by default until enabled in Settings.
+
+FRONTEND ACTIVATION:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ HOW TO ENABLE BETA FEATURES:                                                │
+│                                                                              │
+│ 1. Click #settingsBtn (gear icon in sidebar header)                         │
+│ 2. Go to [About] tab in #settingsModal                                      │
+│ 3. Toggle #betaToggle switch ON                                             │
+│ 4. Click [Save Settings]                                                    │
+│                                                                              │
+│ EFFECT: JavaScript adds .beta-enabled class to <body>                       │
+│         All .beta-feature elements become visible                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+BETA FEATURES MAP:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FEATURE                  │ HTML ID/CLASS           │ LOCATION              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 1. Zoom Controls         │ .zoom-controls          │ #previewArea top-right│
+│    [−] [100%] [+]        │   #zoomOutBtn           │                       │
+│                          │   #zoomLevel            │                       │
+│                          │   #zoomInBtn            │                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 2. Price Per Sq Ft       │ .price-per-sqft         │ Below #u_selling_price│
+│    Shows AED X / sq ft   │   .sqft-label           │                       │
+│                          │   .sqft-value           │                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 3. Calculator Cards      │ .calculator-cards       │ Below Property Details│
+│    [Premium %]           │   .calc-card            │                       │
+│    [ADGM %]              │   .calc-label           │                       │
+│    [Agency %]            │   .calc-value           │                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 4. WhatsApp Button       │ .btn.btn-whatsapp       │ #exportModal footer   │
+│    Share via WhatsApp    │                         │                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 5. Dashboard Modal       │ #dashboardModal         │ Overlay modal         │
+│    Multi-document mgmt   │   .dashboard-grid       │                       │
+│                          │   .dashboard-card       │ One card per document │
+│                          │   #dashboardBtn         │ Trigger in sidebar    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 6. Enhanced Dropdowns    │ .dropdown-wrapper       │ #u_unit_model,        │
+│    Autocomplete + custom │   .custom-dropdown      │ #u_unit_type,         │
+│    Type or select        │   .dropdown-item        │ #u_views              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 7. Flatpickr Date Picker │ .flatpickr-calendar     │ Payment plan dates    │
+│    Modern calendar UI    │                         │                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+VISIBILITY TOGGLE:
+All elements with .beta-feature class are hidden unless body has .beta-enabled.
+This is controlled by JavaScript based on Settings > Beta Features toggle.
+
+TECHNOLOGIES:
+- Flatpickr for date picking
+- Custom dropdown components
+- localStorage for multi-document state
+
+================================================================================
+*/
+
+/* ============================================
+   BETA TOGGLE SWITCH
+   ============================================
+   Toggle switch in Settings > About tab to enable beta features.
+   Styled with purple gradient to indicate "premium" feature.
+
+   BEHAVIOR:
+   - Unchecked: Gray background, gray knob
+   - Checked: Purple gradient background, white knob
+   - JavaScript adds/removes .beta-enabled class to <body>
+
+   VISUAL DESIGN:
+   - 40px × 22px switch (slightly smaller than main toggle)
+   - Purple gradient (#8b5cf6 → #6366f1) for "beta" branding
+   - Animated knob slides 18px to the right when checked
+   ============================================ */
+.beta-toggle-container {
+    /* Toggle is now inline in header row */
+}
+
+/* Toggle switch row - switch + label */
+.beta-toggle {
+    display: flex;                             /* Horizontal layout */
+    align-items: center;                       /* Vertical center */
+    gap: 8px;                                  /* Space between switch and label */
+    cursor: pointer;                           /* Entire row is clickable */
+    user-select: none;                         /* Prevent text selection on click */
+}
+
+/* Hide native checkbox visually but keep accessible for keyboard/screen readers */
+.beta-toggle input {
+    position: absolute;                        /* Remove from flow */
+    opacity: 0;                                /* Invisible but focusable */
+    width: 1px;                                /* Minimal size */
+    height: 1px;
+    margin: -1px;                              /* Prevent layout shift */
+    pointer-events: none;                      /* Clicks go to label */
+}
+
+/* Focus style on visible control */
+.beta-toggle input:focus-visible + .beta-slider {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+/* Switch track (background) */
+.beta-slider {
+    width: 40px;                               /* Track width */
+    height: 22px;                              /* Track height */
+    background: var(--bg-input);               /* Dark gray (unchecked) */
+    border: 1px solid var(--border-color);     /* Subtle border */
+    border-radius: 11px;                       /* Pill shape */
+    position: relative;                        /* For absolute knob positioning */
+    transition: all 0.3s;                      /* Smooth state changes */
+}
+
+/* Switch knob (circle inside) */
+.beta-slider::after {
+    content: '';                               /* Empty pseudo-element */
+    position: absolute;                        /* Positioned within track */
+    width: 16px;                               /* Knob size */
+    height: 16px;                              /* Knob size (circle) */
+    background: var(--text-secondary);         /* Gray knob (unchecked) */
+    border-radius: 50%;                        /* Perfect circle */
+    top: 2px;                                  /* Vertical center (2px padding) */
+    left: 2px;                                 /* Start position (left) */
+    transition: all 0.3s;                      /* Smooth slide animation */
+}
+
+/* Checked state - purple gradient background */
+.beta-toggle input:checked + .beta-slider {
+    background: linear-gradient(135deg, var(--beta-color), var(--indigo-500));  /* Purple → indigo gradient */
+    border-color: var(--beta-color);           /* Purple border */
+}
+
+/* Checked state - knob slides right and turns white */
+.beta-toggle input:checked + .beta-slider::after {
+    left: 20px;                                /* Slide to right (40px - 16px - 4px) */
+    background: white;                         /* White knob for contrast */
+}
+
+/* "BETA" label badge next to toggle */
+.beta-label {
+    font-size: 0.6875rem;                      /* 11px - Small text */
+    font-weight: 700;                          /* Bold */
+    letter-spacing: 0.1em;                     /* Wide letter spacing */
+    color: var(--text-secondary);              /* Gray text (unchecked) */
+    padding: 2px 6px;                          /* Badge padding */
+    background: var(--bg-input);               /* Dark background */
+    border-radius: 4px;                        /* Rounded corners */
+    transition: all 0.3s;                      /* Smooth color change */
+}
+
+/* Checked state - purple gradient badge */
+.beta-toggle input:checked ~ .beta-label {
+    background: linear-gradient(135deg, var(--beta-color), var(--indigo-500));  /* Purple gradient */
+    color: white;                              /* White text */
+}
+
+/* ============================================
+   ZOOM CONTROLS (.zoom-controls)
+   ============================================
+   Floating controls in top-right corner of preview area.
+   Allows zooming in/out on the A4 document preview.
+
+   STRUCTURE:
+   [- button] [100%] [+ button]
+
+   FUNCTIONALITY:
+   - JavaScript scales #a4Page using CSS transform: scale()
+   - Zoom levels: 50%, 75%, 100%, 125%, 150%, 175%, 200%
+   - Minus button zooms out, plus button zooms in
+
+   VISUAL DESIGN:
+   - Semi-transparent dark background (rgba 90% opacity)
+   - Positioned absolute, floats above preview
+   - Hover state: buttons turn teal
+   - Shadow for depth (floats above content)
+
+   ACCESSIBILITY:
+   - Keyboard accessible (Tab to focus, Enter to activate)
+   - Screen reader labels (JavaScript adds aria-label)
+   ============================================ */
+/* Zoom Controls */
+.zoom-controls {
+    position: absolute;                        /* Float above preview area */
+    top: 20px;                                 /* Distance from top */
+    right: 20px;                               /* Distance from right */
+    display: flex;                             /* Horizontal layout */
+    align-items: center;                       /* Vertical center */
+    gap: 4px;                                  /* Space between elements */
+    background: rgba(17, 24, 39, 0.9);         /* Dark semi-transparent background */
+    padding: 6px 10px;                         /* Inner spacing */
+    border-radius: 8px;                        /* Rounded corners */
+    z-index: 100;                              /* Above preview content */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Drop shadow */
+}
+
+/* Zoom button (- and +) */
+.zoom-btn {
+    width: 28px;                               /* Button size */
+    height: 28px;                              /* Button size (square) */
+    display: flex;                             /* Flexbox for centering */
+    align-items: center;                       /* Vertical center */
+    justify-content: center;                   /* Horizontal center */
+    background: var(--bg-input);               /* Dark background */
+    border: 1px solid var(--border-color);     /* Subtle border */
+    border-radius: 4px;                        /* Rounded corners */
+    color: var(--text-primary);                /* White text */
+    cursor: pointer;                           /* Hand cursor */
+    font-size: 16px;                           /* Icon size */
+    font-weight: bold;                         /* Bold for + and - symbols */
+    transition: all 0.2s;                      /* Smooth hover */
+}
+
+/* Hover state - teal background */
+.zoom-btn:hover {
+    background: var(--primary-color);          /* Teal background */
+    border-color: var(--primary-color);        /* Teal border */
+    color: var(--bg-dark);                     /* Dark text for contrast */
+}
+
+.zoom-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+/* Zoom level display ("100%" text) */
+.zoom-level {
+    font-size: 12px;                           /* Small text */
+    color: var(--text-secondary);              /* Gray text */
+    min-width: 40px;                           /* Fixed width for alignment */
+    text-align: center;                        /* Center text */
+}
+
+/* ============================================
+   PRICE PER SQ FT DISPLAY (.price-per-sqft)
+   ============================================
+   Shows automatically calculated price per square foot.
+   Displayed below the Price field in input panel.
+
+   FORMULA:
+   Price Per Sq Ft = Property Price ÷ Built-Up Area (Sq Ft)
+   Example: AED 2,500,000 ÷ 1,200 sq ft = AED 2,083 / sq ft
+
+   VISUAL DESIGN:
+   - Purple gradient background (10% opacity) for "premium" look
+   - Purple border and text matches beta branding
+   - Horizontal flex: label on left, value on right
+
+   VISIBILITY:
+   - Only shown when beta features enabled
+   - Only calculated when both Price and Built-Up Area have values
+   ============================================ */
+/* Price Per Sq Ft Display */
+.price-per-sqft {
+    display: flex;                             /* Horizontal layout */
+    align-items: center;                       /* Vertical center */
+    gap: 8px;                                  /* Space between label and value */
+    margin-top: 6px;                           /* Space above (below Price field) */
+    padding: 6px 10px;                         /* Inner spacing */
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1));  /* Purple gradient (10% opacity) */
+    border: 1px solid rgba(139, 92, 246, 0.3); /* Purple border (30% opacity) */
+    border-radius: 4px;                        /* Rounded corners */
+}
+
+/* Label text ("PRICE PER SQ FT") */
+.sqft-label {
+    font-size: 0.625rem;                       /* 10px - Small text */
+    color: var(--text-secondary);              /* Gray text */
+    text-transform: uppercase;                 /* ALL CAPS */
+}
+
+/* Calculated value ("AED 2,083 / sq ft") */
+.sqft-value {
+    font-size: 13px;                           /* Medium text */
+    font-weight: 700;                          /* Bold */
+    color: var(--beta-color);                  /* Purple color (beta branding) */
+}
+
+/* ============================================
+   CALCULATOR CARDS (.calculator-cards)
+   ============================================
+   Three-card summary showing calculated percentages.
+   Displayed in Property Details section when beta enabled.
+
+   CARDS:
+   1. Premium % (UAE nationals get discount)
+   2. ADGM % (Abu Dhabi Global Market registration fee)
+   3. Agency % (Real estate agent commission)
+
+   LAYOUT:
+   - 3-column grid (equal width)
+   - 8px gap between cards
+   - Each card: label above, value below
+
+   VALUE COLORS:
+   - .positive: Green (e.g., discount)
+   - .negative: Red (e.g., additional cost)
+   - Default: White (neutral)
+   ============================================ */
+/* Calculators Section */
+.calculators-section {
+    margin-top: 8px;                           /* Space above cards */
+}
+
+/* Three-column grid for calculator cards */
+.calculator-cards {
+    display: grid;                             /* Grid layout */
+    grid-template-columns: repeat(3, 1fr);     /* 3 equal-width columns */
+    gap: 8px;                                  /* Space between cards */
+}
+
+/* Individual calculator card */
+.calc-card {
+    background: var(--bg-input);               /* Dark background */
+    border: 1px solid var(--border-color);     /* Subtle border */
+    border-radius: 6px;                        /* Rounded corners */
+    padding: 10px;                             /* Inner spacing */
+    text-align: center;                        /* Center text */
+}
+
+/* Card label ("PREMIUM %", "ADGM %", "AGENCY %") */
+.calc-label {
+    display: block;                            /* Block for vertical stacking */
+    font-size: 0.625rem;                       /* 10px - Small text */
+    color: var(--text-secondary);              /* Gray text */
+    text-transform: uppercase;                 /* ALL CAPS */
+    letter-spacing: 0.05em;                    /* Slight letter spacing */
+    margin-bottom: 4px;                        /* Space below label */
+}
+
+/* Card value (percentage or amount) */
+.calc-value {
+    display: block;                            /* Block for vertical stacking */
+    font-size: 14px;                           /* Medium text */
+    font-weight: 700;                          /* Bold */
+    color: var(--text-primary);                /* White text (default) */
+}
+
+/* Positive value - green (e.g., discount) */
+.calc-value.positive {
+    color: var(--success-color);               /* Green text (#10b981) */
+}
+
+/* Negative value - red (e.g., additional cost) */
+.calc-value.negative {
+    color: var(--danger-color);                /* Red text (#ef4444) */
+}
+
+/* ============================================
+   WHATSAPP BUTTON (.btn-whatsapp)
+   ============================================
+   Special button for sharing document via WhatsApp.
+   Uses WhatsApp brand colors (green).
+
+   FUNCTIONALITY:
+   - Opens WhatsApp with pre-filled message + PDF attachment
+   - Mobile: Opens WhatsApp app directly
+   - Desktop: Opens WhatsApp Web
+
+   VISUAL DESIGN:
+   - Official WhatsApp green (#25D366)
+   - Darker green on hover (#128C7E)
+   - Uses higher specificity instead of !important
+
+   USAGE:
+   Shown in Export modal when beta features enabled.
+   ============================================ */
+/* WhatsApp Button - uses .btn.btn-whatsapp for higher specificity */
+.btn.btn-whatsapp {
+    background: var(--whatsapp-color);         /* WhatsApp brand green */
+    color: white;                              /* White text */
+    border: none;                              /* No border */
+}
+
+/* Hover state - darker green */
+.btn.btn-whatsapp:hover {
+    background: var(--whatsapp-hover);         /* Dark green (WhatsApp dark theme) */
+}
+
+/* ============================================
+   Dashboard Modal (#dashboardModal)
+   ============================================
+   FRONTEND: Multi-document management system (BETA feature)
+   HTML ID: #dashboardModal (triggered by #dashboardBtn in sidebar)
+
+   DASHBOARD STRUCTURE:
+   #dashboardModal
+     ├── .modal-content.modal-large (wider than default)
+     │     ├── .modal-header ("Document Dashboard")
+     │     ├── .modal-body
+     │     │     ├── .dashboard-toolbar
+     │     │     │     ├── [Search input] (filter documents)
+     │     │     │     └── [+ New Document] button
+     │     │     └── .dashboard-grid
+     │     │           ├── .dashboard-card (one per saved document)
+     │     │           │     ├── .card-badge ("CURRENT" for active doc)
+     │     │           │     ├── h4 (project name)
+     │     │           │     ├── .card-unit (unit number)
+     │     │           │     ├── .card-price (selling price)
+     │     │           │     ├── .card-meta (last modified date)
+     │     │           │     └── .card-actions
+     │     │           │           ├── [Load] .card-btn
+     │     │           │           ├── [Export] .card-btn
+     │     │           │           └── [Delete] .card-btn.delete-btn
+     │     │           └── .dashboard-empty (shown when no documents)
+     │     └── .modal-footer [Close]
+
+   CARD STATES:
+   - .dashboard-card: Default state (dark background)
+   - .dashboard-card.current: Currently active document (purple gradient)
+   - .dashboard-card:hover: Elevated with teal border
+
+   DATA STORAGE:
+   Documents stored in localStorage as JSON array.
+   Each document contains: project, unit, price, data, lastModified.
+   ============================================ */
+.modal-large {
+    max-width: 800px;
+}
+
+.dashboard-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.dashboard-toolbar .input-field {
+    flex: 1;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.dashboard-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.dashboard-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-card:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+.dashboard-card.current {
+    border-color: var(--beta-color);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1));
+}
+
+.card-badge {
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    background: var(--beta-color);
+    color: white;
+    font-size: 0.5625rem; /* 9px */
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+}
+
+.dashboard-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-unit {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 4px 0;
+}
+
+.card-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 8px 0;
+}
+
+.card-meta {
+    font-size: 0.625rem; /* 10px */
+    color: var(--text-muted);
+}
+
+.card-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.card-btn {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 0.6875rem; /* 11px */
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.card-btn:hover {
+    background: var(--border-color);
+    color: var(--text-primary);
+}
+
+.card-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+.card-btn.delete-btn:hover {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.dashboard-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px;
+}
+
+/* ============================================
+   Tooltip Icons
+   ============================================ */
+.tooltip-icon {
+    color: var(--text-muted);
+    cursor: help;
+    font-size: 12px;
+}
+
+.tooltip-icon:hover {
+    color: var(--primary-color);
+}
+
+/* ============================================
+   Enhanced Input (Datalist dropdown arrow)
+   ============================================ */
+.beta-enhanced {
+    background-image: none;
+}
+
+input[list]::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+}
+
+/* ============================================
+   Custom Dropdown Styles (BETA feature)
+   ============================================
+   FRONTEND: Enhanced dropdowns with autocomplete and custom options
+   Used on: #u_unit_model, #u_unit_type, #u_views fields
+
+   DROPDOWN STRUCTURE:
+   .dropdown-wrapper (container)
+     ├── .input-field (text input with autocomplete)
+     ├── .dropdown-arrow-btn (▼ button to open dropdown)
+     │     └── svg (chevron icon)
+     └── .custom-dropdown (floating option list)
+           ├── .dropdown-item (selectable option)
+           ├── .dropdown-item (selectable option)
+           ├── ...
+           └── .dropdown-item.dropdown-custom ("+ Add Custom")
+
+   BEHAVIOR:
+   1. User types → options filter to match
+   2. User clicks arrow → full option list appears
+   3. User selects option → value fills input
+   4. User clicks "+ Add Custom" → can enter custom value
+
+   EXAMPLE (Unit Model dropdown):
+   ┌─────────────────────────────────────────────────────────────┐
+   │ [Studio                                            ] [▼]   │
+   ├─────────────────────────────────────────────────────────────┤
+   │ Studio                                                      │
+   │ 1 Bedroom                                                   │
+   │ 2 Bedroom                                                   │
+   │ 2 Bedroom + Maid                                            │
+   │ 3 Bedroom                                                   │
+   │ 3 Bedroom + Maid                                            │
+   │ ─────────────────────────────────────────────               │
+   │ + Add Custom                                                │
+   └─────────────────────────────────────────────────────────────┘
+
+   STATES:
+   - .hidden: Dropdown list hidden
+   - .dropdown-item.highlighted: Keyboard navigation highlight
+   - :focus-within: Wrapper focused (arrow turns teal)
+   ============================================ */
+.dropdown-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-wrapper .input-field {
+    flex: 1;
+    padding-right: 30px;
+}
+
+.dropdown-arrow-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;                           /* Increased from 20px for WCAG 2.5.8 touch target */
+    height: 24px;                          /* Increased from 20px for WCAG 2.5.8 touch target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s;
+}
+
+.dropdown-arrow-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.dropdown-arrow-btn:hover {
+    color: var(--primary-color);
+}
+
+.dropdown-wrapper:focus-within .dropdown-arrow-btn {
+    color: var(--primary-color);
+}
+
+.custom-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.custom-dropdown.hidden {
+    display: none;
+}
+
+.dropdown-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: background 0.15s;
+}
+
+.dropdown-item:hover,
+.dropdown-item.highlighted {
+    background: var(--bg-input);
+}
+
+.dropdown-item:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.dropdown-item.highlighted {
+    background: var(--primary-color);
+    color: var(--bg-dark);
+}
+
+.dropdown-item.dropdown-custom {
+    border-top: 1px solid var(--border-color);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.dropdown-item.dropdown-custom:hover {
+    background: rgba(98, 198, 193, 0.1);
+}
+
+.dropdown-item .custom-icon {
+    display: inline-block;
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+/* ============================================
+   Hide BETA features when disabled
+   ============================================ */
+body:not(.beta-enabled) .beta-feature {
+    display: none !important;
+}
+
+/* ============================================
+   Flatpickr Dark Theme Overrides
+   ============================================ */
+.flatpickr-calendar {
+    background: var(--bg-dark) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.flatpickr-day {
+    color: var(--text-primary) !important;
+}
+
+.flatpickr-day:hover {
+    background: var(--bg-input) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.flatpickr-day.selected {
+    background: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.flatpickr-months .flatpickr-month {
+    background: var(--bg-dark) !important;
+    color: var(--text-primary) !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+    background: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+}
+
+.flatpickr-weekdays {
+    background: var(--bg-dark) !important;
+}
+
+.flatpickr-weekday {
+    color: var(--text-secondary) !important;
+}
+
+/* ============================================
+   Additional Export Options Styling
+   ============================================ */
+.export-option.beta-feature {
+    border-left: 3px solid var(--beta-color);
+}
+
+/* ============================================
+   Responsive adjustments for BETA features
+   ============================================ */
+@media (max-width: 768px) {
+    .calculator-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .zoom-controls {
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+    }
+}

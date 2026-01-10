@@ -1,80 +1,294 @@
-diff --git a/css/print.css b/css/print.css
-index c7f6b96ba36afa9e7429a58561fd90c60f2d6aba..2b87a2b2e35c74e6387ace50e20f2eee2b1f37fb 100644
---- a/css/print.css
-+++ b/css/print.css
-@@ -183,50 +183,75 @@ img {
-     height: auto !important;                   /* Maintain aspect ratio */
- }
+/*
+================================================================================
+PRINT.CSS - Print Media Query Styles
+================================================================================
 
- /* ============================================
-    PAGE BREAK PREVENTION
-    ============================================
-    Prevents awkward page breaks inside content.
-    Keeps tables and content rows together on same page.
-    ============================================ */
- /* Prevent page breaks inside tables */
- .data-table,
- .content-row,
- tr,
- td,
- th {
-     page-break-inside: avoid !important;       /* Don't split these elements across pages */
- }
+PURPOSE: Styles applied ONLY when printing the document (File > Print).
+         Optimizes layout for physical/PDF printing.
 
- /* Scale floor plan image to fit print page */
- #floorPlanImg {
-     max-height: 110mm !important;              /* Max height for landscape (leave room for header/footer) */
-     width: auto !important;                    /* Maintain aspect ratio */
-     object-fit: contain !important;            /* Scale to fit without cropping */
- }
+FRONTEND PRINT WORKFLOW:
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PRINT OPTIONS (User triggers via):                                          │
+│                                                                              │
+│ 1. #printBtn (sidebar) → Browser Print Dialog (Ctrl+P / Cmd+P)              │
+│    - Uses this print.css directly                                           │
+│    - User sees browser's print preview with "Save as PDF" option            │
+│                                                                              │
+│ 2. #exportBtn → #exportModal → [PDF Document] option                        │
+│    - Uses html2pdf.js library (screenshot-based)                            │
+│    - This CSS applies to the captured content                               │
+│                                                                              │
+│ 3. #exportBtn → #exportModal → [PDF Editable] (BETA)                        │
+│    - Uses jsPDF library (text-based)                                        │
+│    - Does NOT use this CSS (generates programmatically)                     │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-+/* Align landscape floor plan frame to preview proportions */
-+#a4Page.template-landscape .column-right {
-+    padding-top: 0 !important;
-+    padding-bottom: 0 !important;
-+    align-items: stretch !important;
-+    justify-content: flex-start !important;
-+}
-+
-+#a4Page.template-landscape .floorplan-frame {
-+    height: 100% !important;
-+    width: 100% !important;
-+    max-height: 100% !important;
-+    padding: 0 !important;
-+    display: flex !important;
-+    align-items: center !important;
-+    justify-content: center !important;
-+}
-+
-+#a4Page.template-landscape #floorPlanImg {
-+    width: 100% !important;
-+    height: 100% !important;
-+    max-width: 100% !important;
-+    max-height: 100% !important;
-+}
-+
- /* ============================================
-    UI CONTROLS HIDING
-    ============================================
-    Hides all screen-only interactive elements.
-    These should not appear on printed document.
-    ============================================ */
- /* Hide all modals and UI controls */
- .modal,
- .leaflet-control-zoom,
- .zoom-controls,
- .btn-container,
- .ui-controls {
-     display: none !important;                  /* Hide all UI controls */
- }
+WHAT GETS PRINTED (Visual Map):
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ HIDDEN FROM PRINT:                │ VISIBLE IN PRINT:                       │
+│                                   │                                         │
+│ #inputPanel (entire left sidebar) │ #previewArea (full width)               │
+│ .modal (all overlay dialogs)      │   └── #a4Page (the document)            │
+│ .zoom-controls (beta feature)     │         ├── .header-bar (teal stripe)   │
+│ .btn-container (action buttons)   │         ├── .logo-area (#logoImg)       │
+│ .ui-controls (any UI elements)    │         ├── .document-header            │
+│ .leaflet-control-zoom (maps)      │         │     └── #disp_title           │
+│                                   │         ├── .content-row                │
+│                                   │         │     ├── .column-left          │
+│                                   │         │     │     ├── PROPERTY DETAILS│
+│                                   │         │     │     ├── FINANCIAL       │
+│                                   │         │     │     └── PAYMENT PLAN    │
+│                                   │         │     └── .column-right         │
+│                                   │         │           └── #floorPlanImg   │
+│                                   │         ├── .footer-area                │
+│                                   │         │     └── #disp_project_footer  │
+│                                   │         └── .footnote (disclaimer)      │
+└─────────────────────────────────────────────────────────────────────────────┘
 
- /* Note: print-color-adjust is handled by the * selector above for all elements */
+TEMPLATE VARIANTS:
+- #a4Page (default): 297mm × 210mm landscape
+- #a4Page.template-portrait: 210mm × 297mm portrait (columns stack vertically)
+- #a4Page.template-minimal: 297mm × 210mm landscape (subtle styling)
 
- /* ============================================
-    PORTRAIT-SPECIFIC PRINT ADJUSTMENTS
-    ============================================
-    When using portrait template (210mm × 297mm):
-    - Stack columns vertically instead of side-by-side
-    - Reduce floor plan height to fit tall page
+PRINT BEHAVIOR:
+- Hides input panel, shows only preview area
+- Removes all UI controls (modals, buttons, zoom controls)
+- Forces exact color printing (backgrounds, borders, brand colors)
+- Sets A4 page size and orientation
+- Prevents page breaks inside tables and content rows
+- Removes shadows and transforms for clean print output
 
-    WHY:
+TECHNICAL NOTES:
+- @page rule sets print page size to A4 landscape by default
+- !important rules override screen styles for printing
+- print-color-adjust: exact forces background colors to print
+- page-break-inside: avoid keeps content blocks together
+
+USAGE:
+This file is automatically applied when user prints via:
+1. Browser Print Dialog (Ctrl+P / Cmd+P)
+2. PDF Export (using html2pdf library)
+
+================================================================================
+*/
+
+/* ============================================\n   @PAGE RULE - Print Page Setup\n   ============================================\n   Defines paper size and margins for the printer.\n   Default: A4 landscape (297mm \u00d7 210mm)\n   ============================================ */\n/* Print CSS - Print Media Styles */
+
+@page {
+    size: A4 landscape;                        /* Set paper to A4 landscape (297 × 210mm) */
+    margin: 0;                                 /* No printer margins (we handle margins in CSS) */
+}
+
+/* Body - reset for print */
+body {
+    background: white !important;              /* Force white background (no gray) */
+    height: auto !important;                   /* Auto height (don't constrain) */
+    display: block !important;                 /* Block layout for print */
+    margin: 0 !important;                      /* No margins */
+    padding: 0 !important;                     /* No padding */
+}
+
+/* Hide input panel - show only document preview */
+#inputPanel {
+    display: none !important;                  /* Completely hide input panel */
+}
+
+/* Preview area - full width, no background */
+#previewArea {
+    padding: 0 !important;                     /* Remove padding */
+    background: white !important;              /* White background */
+    overflow: visible !important;              /* Show all content */
+    display: block !important;                 /* Block layout */
+    margin: 0 !important;                      /* No margins */
+    width: 100% !important;                    /* Full width */
+}
+
+/* ============================================
+   A4 PAGE - Print Layout
+   ============================================
+   FRONTEND: The white A4 document in preview area
+   HTML ID: #a4Page
+
+   PRINT ADJUSTMENTS:
+   - Removes box-shadow (screen decoration only)
+   - Removes transform (resets any zoom scaling)
+   - Sets exact A4 dimensions (297mm × 210mm landscape)
+   - Reduced padding (8mm × 12mm) for more printable area
+
+   CONTAINED ELEMENTS (all printed):
+   #a4Page
+     ├── .header-bar (teal stripe at top)
+     ├── .logo-area (#logoImg - company logo)
+     ├── .document-header
+     │     ├── .section-label ("UNIT MODEL")
+     │     └── .main-title (#disp_title - e.g., "2 BEDROOM + MAID")
+     ├── .content-row
+     │     ├── .column-left (40%)
+     │     │     ├── #propertyDetailsTable (PROPERTY DETAILS)
+     │     │     ├── #financialTable (FINANCIAL BREAKDOWN)
+     │     │     └── #previewPaymentPlanTable (PAYMENT PLAN - Off-Plan only)
+     │     └── .column-right (60%)
+     │           └── .floorplan-frame
+     │                 └── #floorPlanImg (uploaded floor plan)
+     ├── .footer-area
+     │     ├── .footer-proj (#disp_project_footer - project name)
+     │     └── .footer-sub ("SALE OFFER")
+     └── .footnote (disclaimer text)
+   ============================================ */
+#a4Page {
+    box-shadow: none !important;               /* Remove drop shadow (screen only) */
+    margin: 0 !important;                      /* No margins (full page) */
+    padding: 8mm 12mm !important;              /* Reduced inner margins (printable area) */
+    page-break-after: avoid !important;        /* Don't break page after document */
+    page-break-before: avoid !important;       /* Don't break page before document */
+    width: 297mm !important;                   /* A4 landscape width */
+    height: 210mm !important;                  /* A4 landscape height */
+    transform: none !important;                /* Remove zoom transform (print at 100%) */
+    position: relative !important;             /* Relative for absolute children */
+    overflow: hidden !important;               /* Clip content to page */
+}
+
+/* Portrait variant - different dimensions */
+#a4Page.template-portrait {
+    width: 210mm !important;                   /* A4 portrait width (narrow) */
+    height: 297mm !important;                  /* A4 portrait height (tall) */
+}
+
+/* ============================================
+   COLOR PRINTING ENFORCEMENT
+   ============================================
+   Forces browsers to print backgrounds and colors.
+   Without this, brand colors and header bar wouldn't print.
+
+   WHY NEEDED:
+   Browsers default to "no backgrounds" for ink savings.
+   We override this to ensure brand consistency on print.
+   ============================================ */
+
+/* All elements - force colors to print (applies to all elements including header, images, etc.) */
+* {
+    -webkit-print-color-adjust: exact !important;  /* WebKit/Chrome */
+    print-color-adjust: exact !important;      /* Modern browsers */
+}
+
+/* Header bar - force teal background to print */
+.header-bar {
+    height: 8mm !important;                    /* Fixed height */
+    background-color: var(--primary-color, #62c6c1) !important;  /* Teal background */
+}
+
+/* Images - ensure proper scaling for print */
+img {
+    max-width: 100% !important;                /* Don't overflow page */
+    height: auto !important;                   /* Maintain aspect ratio */
+}
+
+/* ============================================
+   PAGE BREAK PREVENTION
+   ============================================
+   Prevents awkward page breaks inside content.
+   Keeps tables and content rows together on same page.
+   ============================================ */
+/* Prevent page breaks inside tables */
+.data-table,
+.content-row,
+tr,
+td,
+th {
+    page-break-inside: avoid !important;       /* Don't split these elements across pages */
+}
+
+/* Scale floor plan image to fit print page */
+#floorPlanImg {
+    max-height: 110mm !important;              /* Max height for landscape (leave room for header/footer) */
+    width: auto !important;                    /* Maintain aspect ratio */
+    object-fit: contain !important;            /* Scale to fit without cropping */
+}
+
+/* Align landscape floor plan frame to preview proportions */
+#a4Page.template-landscape .column-right {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+}
+
+#a4Page.template-landscape .floorplan-frame {
+    height: 100% !important;
+    width: 100% !important;
+    max-height: 100% !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#a4Page.template-landscape #floorPlanImg {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+/* ============================================
+   UI CONTROLS HIDING
+   ============================================
+   Hides all screen-only interactive elements.
+   These should not appear on printed document.
+   ============================================ */
+/* Hide all modals and UI controls */
+.modal,
+.leaflet-control-zoom,
+.zoom-controls,
+.btn-container,
+.ui-controls {
+    display: none !important;                  /* Hide all UI controls */
+}
+
+/* Note: print-color-adjust is handled by the * selector above for all elements */
+
+/* ============================================
+   PORTRAIT-SPECIFIC PRINT ADJUSTMENTS
+   ============================================
+   When using portrait template (210mm × 297mm):
+   - Stack columns vertically instead of side-by-side
+   - Reduce floor plan height to fit tall page
+
+   WHY:
+   Portrait layout is narrower, so horizontal layout won't fit.
+   ============================================ */
+/* Portrait-specific print adjustments */
+#a4Page.template-portrait .content-row {
+    flex-direction: column !important;         /* Stack columns vertically */
+}
+
+/* Make columns full-width in portrait */
+#a4Page.template-portrait .column-left,
+#a4Page.template-portrait .column-right {
+    width: 100% !important;                    /* Full width (not 45%/55%) */
+}
+
+/* Reduce floor plan height in portrait */
+#a4Page.template-portrait #floorPlanImg {
+    max-height: 80mm !important;               /* Smaller height for portrait */
+}
+
+/* ============================================
+   FOOTER POSITIONING FIX
+   ============================================
+   Ensures "Created by" footer prints at bottom.
+   Prevents overlap with content above.
+   White background ensures visibility over content.
+   ============================================ */
+/* Fix footer overlap */
+.created-by-footer {
+    position: absolute !important;             /* Absolute positioning */
+    bottom: 5mm !important;                    /* Distance from bottom */
+    left: 0 !important;                        /* Full width */
+    right: 0 !important;                       /* Full width */
+    width: 100% !important;                    /* Explicit full width */
+    text-align: center !important;             /* Center text */
+    background: white !important;              /* White background (prevent overlap) */
+    padding-top: 2mm !important;               /* Small padding above */
+    z-index: 10 !important;                    /* Above other content */
+}

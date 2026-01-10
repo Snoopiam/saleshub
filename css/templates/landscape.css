@@ -1,0 +1,322 @@
+/*
+================================================================================
+LANDSCAPE.CSS - A4 Landscape Template (Default)
+================================================================================
+
+FRONTEND REFERENCE:
+  - Template selector: Dropdown in sidebar header (id="templateSelect")
+  - Applied when: User selects "Landscape" template
+  - Target element: #a4Page (the preview document on right side of screen)
+
+PAGE STRUCTURE (Visual Map):
+  ┌─────────────────────────────────────────────────────────────────────────────┐
+  │ .header-bar (teal colored bar at very top)                        [LOGO]   │
+  ├─────────────────────────────────────────────────────────────────────────────┤
+  │ .document-header                                                            │
+  │   └── .main-title (e.g., "2 BEDROOM + MAID")                               │
+  ├───────────────────────────────┬─────────────────────────────────────────────┤
+  │ .column-left (40%)            │ .column-right (60%)                         │
+  │                               │                                             │
+  │ ┌───────────────────────────┐ │  ┌─────────────────────────────────────┐   │
+  │ │ PROPERTY DETAILS table    │ │  │                                     │   │
+  │ │ (Unit No, Type, Views...) │ │  │  .floorplan-frame                   │   │
+  │ └───────────────────────────┘ │  │    └── #floorPlanImg                │   │
+  │ ┌───────────────────────────┐ │  │       (uploaded floor plan)         │   │
+  │ │ FINANCIAL BREAKDOWN table │ │  │                                     │   │
+  │ │ (Prices, Fees, Total...)  │ │  │                                     │   │
+  │ └───────────────────────────┘ │  └─────────────────────────────────────┘   │
+  │ ┌───────────────────────────┐ │                                             │
+  │ │ PAYMENT PLAN table        │ │                        ┌─────────────────┐ │
+  │ │ (Date, %, Amount rows)    │ │                        │ .footer-area    │ │
+  │ └───────────────────────────┘ │                        │ (PROJECT NAME)  │ │
+  │                               │                        │ (SALE OFFER)    │ │
+  ├───────────────────────────────┴────────────────────────┴─────────────────┴──┤
+  │                        .created-by-footer (centered agent credit)           │
+  └─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+*/
+
+/* ============================================
+   A4 PAGE CONTAINER
+   ============================================
+   FRONTEND: The white A4 document preview on the right side of the screen
+   HTML ID: #a4Page
+   LOCATION: index.html - main preview area
+
+   This is the root container for the entire sales offer document.
+   Applied when class "template-landscape" is added to #a4Page.
+*/
+#a4Page.template-landscape {
+    width: 297mm;                              /* A4 landscape width (standard) */
+    height: 210mm;                             /* A4 landscape height (standard) */
+    padding: 40px;                             /* ~11mm margins all sides */
+    display: flex;
+    flex-direction: column;                    /* Stack: header → content → footer */
+}
+
+/* ============================================
+   HEADER BAR
+   ============================================
+   FRONTEND: Teal/brand-colored horizontal bar at the very top of the document
+   HTML CLASS: .header-bar
+   LOCATION: First visible element in #a4Page
+
+   This bar spans the full width and uses the brand primary color.
+*/
+.template-landscape .header-bar {
+    height: 8mm;                               /* Thin accent bar */
+}
+
+/* ============================================
+   LOGO AREA
+   ============================================
+   FRONTEND: Company logo displayed in top-right corner
+   HTML CLASS: .logo-area
+   HTML ID (image): #logoImg
+   LOCATION: Positioned absolutely, overlaps header bar area
+
+   Set via: Settings modal → Branding tab → Upload Logo
+*/
+.template-landscape .logo-area {
+    top: 12mm;                                 /* Below header bar */
+    right: 15mm;                               /* Right margin */
+    width: 130px;
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.template-landscape .logo-img {
+    max-height: 60px;
+    width: auto;
+}
+
+/* ============================================
+   DOCUMENT HEADER / MAIN TITLE
+   ============================================
+   FRONTEND: Large title showing unit model (e.g., "2 BEDROOM + MAID")
+   HTML CLASS: .document-header, .main-title
+   HTML ID: #disp_title (the text content)
+   LOCATION: Below header bar, above the two columns
+
+   Value comes from: Sidebar → Unit Model dropdown (id="select-unit-model")
+*/
+.template-landscape .document-header {
+    margin-top: 5mm;
+    margin-bottom: 20px;
+}
+
+.template-landscape .main-title {
+    font-size: 40px;                           /* Large, prominent title */
+}
+
+/* ============================================
+   CONTENT ROW (Two-Column Layout Container)
+   ============================================
+   FRONTEND: The main content area containing left tables and right floor plan
+   HTML CLASS: .content-row
+   LOCATION: Between document-header and footer
+
+   Uses flexbox to create side-by-side columns:
+   - Left column (40%): Data tables
+   - Right column (60%): Floor plan image
+*/
+.template-landscape .content-row {
+    display: flex;
+    flex-direction: row;
+    gap: 30px;                                 /* ~8mm space between columns */
+    flex: 1;                                   /* Fill remaining vertical space */
+    align-items: flex-start;
+    min-height: 0;
+    overflow: visible;
+}
+
+/* ============================================
+   LEFT COLUMN - All Data Tables
+   ============================================
+   FRONTEND: Contains all the data tables stacked vertically
+   HTML CLASS: .column-left
+   LOCATION: Left 40% of content area
+
+   CONTAINS (top to bottom):
+   1. PROPERTY DETAILS table (.data-table#propertyDetailsTable)
+      - Unit No, Unit Type, Views, Internal Area, Balcony Area, Total Area
+
+   2. FINANCIAL BREAKDOWN table (.data-table#financialTable)
+      - Original Price, Selling Price, Refund, Balance, Premium
+      - Admin Fees, ADGM Fees, Agency Fees, Total Initial Payment
+
+   3. PROPERTY STATUS table (.data-table#propertyStatusTable) - Ready Property only
+      - Project Completion, Project Age, Unit Received, Ownership
+      - Occupancy Status, Current Rent, Lease Until, Service Charge
+
+   4. PAYMENT PLAN table (.payment-plan-table#previewPaymentPlanTable) - Off-Plan only
+      - Date of Payment, %, Amount (AED) columns
+      - Multiple rows for payment milestones
+*/
+.template-landscape .column-left {
+    width: 40%;
+    height: 165mm;                             /* Fixed height to prevent overflow */
+    overflow: hidden;                          /* Cut off if content too long */
+    position: relative;
+    /* Debug border - uncomment to visualize: */
+    /* border: 1px solid red; */
+}
+
+/* ============================================
+   RIGHT COLUMN - Floor Plan Container
+   ============================================
+   FRONTEND: Contains the floor plan image frame
+   HTML CLASS: .column-right
+   LOCATION: Right 60% of content area
+
+   This column holds the floor plan frame which contains
+   the uploaded floor plan image.
+*/
+.template-landscape .column-right {
+    width: 60%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 20px;                         /* Space from main title */
+    padding-bottom: 40px;                      /* Space above footer */
+    box-sizing: border-box;
+    min-height: 0;
+}
+
+/* ============================================
+   FLOOR PLAN FRAME
+   ============================================
+   FRONTEND: The bordered container that holds the floor plan image
+   HTML CLASS: .floorplan-frame
+   HTML ID (for frame): Part of .column-right structure
+   LOCATION: Centered within .column-right
+
+   User uploads image via: Sidebar → Floor Plan section → Upload button
+*/
+.template-landscape .floorplan-frame {
+    height: 140mm;                             /* Frame height */
+    border: 1px solid #16161600;               /* Transparent border (adjust color as needed) */
+    background: #ffffff00;                     /* Transparent background */
+    border-radius: 4px;
+    padding: 0px;                              /* Space between border and image */
+}
+
+/* ============================================
+   FLOOR PLAN IMAGE
+   ============================================
+   FRONTEND: The actual uploaded floor plan image
+   HTML ID: #floorPlanImg
+   LOCATION: Inside .floorplan-frame
+
+   Image uploaded via sidebar, stored as base64/data URL.
+   Recommended image ratio: ~8:7 (1890 x 1654 px for print quality)
+*/
+.template-landscape #floorPlanImg {
+    max-width: 100%;                           /* Fill frame width */
+    max-height: 100%;                          /* Fill frame height */
+    width: auto;
+    height: auto;
+    object-fit: contain;                       /* Maintain aspect ratio */
+    filter: none;
+}
+
+/* Placeholder shown when no floor plan uploaded */
+.template-landscape .img-placeholder {
+    max-width: 99%;
+    max-height: 99%;
+}
+
+/* ============================================
+   FOOTER AREA (Project Name & Sale Offer)
+   ============================================
+   FRONTEND: Project name and "SALE OFFER" text in bottom-right corner
+   HTML CLASS: .footer-area
+   HTML IDs: #disp_project_footer (project name), .footer-sub (SALE OFFER text)
+   LOCATION: Absolute positioned, bottom-right of #a4Page
+
+   Project name comes from: Sidebar → Project Name input (id="input-project-name")
+*/
+.template-landscape .footer-area {
+    bottom: 12mm;
+    right: 15mm;
+    text-align: right;
+}
+
+/* Project Name (e.g., "REEM ELEVEN") */
+.template-landscape .footer-proj {
+    font-size: 18px;                           /* Large, bold project name */
+}
+
+/* "SALE OFFER" subtitle */
+.template-landscape .footer-sub {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* ============================================
+   CREATED BY FOOTER (Agent Credit Line)
+   ============================================
+   FRONTEND: Small centered text at very bottom (e.g., "Created by John Doe")
+   HTML CLASS: .created-by-footer
+   HTML ID: #createdByText (the text content)
+   LOCATION: Absolute positioned, bottom-center of #a4Page
+
+   Set via: Settings modal → Branding tab → Created By field
+*/
+.template-landscape .created-by-footer {
+    bottom: 4mm;
+    font-size: 0.5625rem;                      /* 9px - small agent credit */
+}
+
+/* ============================================
+   FOOTNOTE / DISCLAIMER
+   ============================================
+   FRONTEND: Small disclaimer text (if any) at bottom of left column
+   HTML CLASS: .footnote
+   LOCATION: Below payment plan table in .column-left
+*/
+.template-landscape .footnote {
+    max-width: 60%;
+    margin-top: 10px;
+    font-size: 8px;
+}
+
+/* ============================================
+   TABLE STYLING - COMPACT MODE
+   ============================================
+   These rules tighten spacing to fit all 3 tables in the left column:
+   - Property Details
+   - Financial Breakdown
+   - Payment Plan (or Property Status)
+
+   IMPORTANT FOR PDF: Tight spacing prevents tables from
+   overflowing into footer area during PDF export.
+*/
+
+/* Gap between tables */
+.template-landscape .data-table {
+    margin-bottom: 6px;                        /* Small gap between tables */
+}
+
+/* Table section titles (e.g., "PROPERTY DETAILS", "FINANCIAL BREAKDOWN") */
+.template-landscape .table-title {
+    font-size: 0.6875rem;                      /* 11px */
+    padding: 4px 0 2px;
+}
+
+/* Table content font size */
+.template-landscape .data-table,
+.template-landscape .payment-plan-table {
+    font-size: 0.625rem;                       /* 10px - compact text */
+}
+
+/* Table cell padding - CRITICAL for fitting content */
+.template-landscape .data-table th,
+.template-landscape .data-table td,
+.template-landscape .payment-plan-table th,
+.template-landscape .payment-plan-table td {
+    padding: 2px 0;                            /* Minimal vertical padding */
+}

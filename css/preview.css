@@ -1,104 +1,634 @@
-diff --git a/css/preview.css b/css/preview.css
-index 0b762ece871a49a27bb2b070ed554aae7fb5ff6e..d6a83c6bd2939b9166d8ee2f13a6f3375cf3a05e 100644
---- a/css/preview.css
-+++ b/css/preview.css
-@@ -35,50 +35,99 @@ DOCUMENT STRUCTURE:
-   │       └── .floorplan-frame
-   │           └── #floorPlanImg
-   ├── .footer-area                   (project name, bottom-right)
-   │   ├── .footer-proj               (PROJECT NAME)
-   │   └── .footer-sub                (SALE OFFER)
-   └── .created-by-footer             (agent credit, bottom-center)
+/*
+================================================================================
+PREVIEW.CSS - A4 Document Preview Styles (Base Styles)
+================================================================================
 
- TABLE STRUCTURE:
-   .data-table (Property Details, Financial Breakdown)
-   ├── caption.table-title            ("PROPERTY DETAILS")
-   └── tbody
-       └── tr
-           ├── td.row-label           (field name)
-           └── td.row-value           (field value)
+PURPOSE:
+  Base styles for the A4 document preview panel on the right side of the screen.
+  Template-specific overrides (dimensions, spacing) are in css/templates/*.css
 
-   .payment-plan-table
-   ├── caption.table-title            ("PAYMENT PLAN 30:70")
-   ├── thead
-   │   └── tr.table-header-row
-   │       ├── th                     (Date of Payment)
-   │       ├── th                     (%)
-   │       └── th                     (Amount AED)
-   └── tbody
-       └── tr (multiple rows)
+FRONTEND LOCATION:
+  - Preview panel: Right side of main screen
+  - Container: #previewArea
+  - Document: #a4Page
 
-+PROJECT GROUP MAP (IDENTIFIER LISTS)
-+  Property Details Group
-+  - Project Name: #disp_project_footer
-+  - Unit No: #display-unit-number
-+  - Unit Type: #disp_unit_type
-+  - Unit Model: #disp_title
-+  - Maid's Room: #disp_row_maidsroom (if present)
-+  - Laundry Room: #disp_row_laundry (if present)
-+  - Store Room: #disp_row_store (if present)
-+  - Views: #disp_views
-+  - Internal Area (Sq.Ft): #disp_internal
-+  - Balcony Area (Sq.Ft): #disp_balcony
-+  - Total Area (Sq.Ft): #display-total-area
-+
-+  Financial Breakdown Group
-+  - Original Price: #disp_original_price
-+  - Selling Price: #disp_selling_price
-+  - Paid Percentage: #disp_amount_paid_percent (if present)
-+  - Refund (40% of Original Price): #disp_refund
-+  - Resale Clause: #disp_resale_clause (if present)
-+  - Balance Resale Clause (AED): #disp_balance_resale
-+  - Premium (Selling Price - Original Price): #disp_premium
-+  - Admin Fees (SAAS): #disp_admin_fees
-+  - ADGM Reg Fees (2% Original Price): #disp_adgm_transfer
-+  - ADGM Termination fee: #disp_adgm_termination
-+  - ADGM Electronic Service fee: #disp_adgm_electronic
-+  - Agency Fees (2% of Selling Price + Vat): #disp_agency_fees
-+  - Total Initial Payments: #disp_total
-+
-+  Payment Plan Group
-+  - Table: #previewPaymentPlanTable
-+  - Body: #payment_plan_tbody
-+
-+CATEGORY NOTES (OFF-PLAN vs READY)
-+  Off-Plan (Primary)
-+  - Off-Plan rows are shown/hidden via #disp_row_refund, #disp_row_balance_resale,
-+    #disp_row_premium and the Payment Plan group.
-+
-+  Ready (Secondary)
-+  - Property Status Table: #propertyStatusTable
-+  - Project Completion: #disp_projecthandover (row: #disp_row_projecthandover)
-+  - Project Age: #disp_projectage (row: #disp_row_projectage)
-+  - Unit Received: #disp_unithandover (row: #disp_row_unithandover)
-+  - Unit Ownership: #disp_unitownership (row: #disp_row_unitownership)
-+  - Status: #disp_occupancy (row: #disp_row_occupancy)
-+  - Current Rent: #disp_currentrent (row: #disp_row_currentrent)
-+  - Lease Until: #disp_leaseuntil (row: #disp_row_leaseuntil)
-+  - Service Charge: #disp_servicecharge (row: #disp_row_servicecharge)
-+
- ================================================================================
- */
+HOW TEMPLATES WORK:
+  1. This file defines BASE styles for all elements
+  2. Template files (landscape.css, portrait.css, minimal.css) OVERRIDE specific values
+  3. JavaScript adds template class to #a4Page (e.g., "template-landscape")
+  4. Template selector: Sidebar header dropdown (id="templateSelect")
 
- /* ============================================
-    A4 PAGE CONTAINER
-    ============================================
-    FRONTEND: The white "paper" document in the preview panel
-    HTML ID: #a4Page
-    LOCATION: Inside #previewArea (right side of screen)
+DOCUMENT STRUCTURE:
+  #a4Page
+  ├── .header-bar                    (teal bar at top)
+  ├── .logo-area                     (company logo, top-right)
+  │   └── .logo-img
+  ├── .document-header               (title section)
+  │   ├── .section-label             ("FLOOR PLANS" text)
+  │   └── .main-title                (unit model, e.g., "2 BEDROOM")
+  ├── .content-row                   (two-column layout)
+  │   ├── .column-left               (40% - data tables)
+  │   │   ├── .data-table            (PROPERTY DETAILS)
+  │   │   ├── .data-table            (FINANCIAL BREAKDOWN)
+  │   │   └── .payment-plan-table    (PAYMENT PLAN)
+  │   └── .column-right              (60% - floor plan)
+  │       └── .floorplan-frame
+  │           └── #floorPlanImg
+  ├── .footer-area                   (project name, bottom-right)
+  │   ├── .footer-proj               (PROJECT NAME)
+  │   └── .footer-sub                (SALE OFFER)
+  └── .created-by-footer             (agent credit, bottom-center)
 
-    This is the root container for the entire sales offer document.
-    Width/height are set per template (landscape=297x210mm, portrait=210x297mm).
- */
- #a4Page {
-     background: var(--paper-bg);               /* Off-white paper color (#fafafa) */
-     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);   /* Shadow makes paper "float" */
-     position: relative;                        /* For absolute child positioning */
-     box-sizing: border-box;
-     transform-origin: center top;              /* Scale from top-center (zoom feature) */
-     overflow: hidden;                          /* Clip overflow content */
-     border: 1px solid var(--text-secondary);   /* Light border defines edge */
- }
- /* Note: Width & height set in css/templates/*.css */
+TABLE STRUCTURE:
+  .data-table (Property Details, Financial Breakdown)
+  ├── caption.table-title            ("PROPERTY DETAILS")
+  └── tbody
+      └── tr
+          ├── td.row-label           (field name)
+          └── td.row-value           (field value)
 
- /* ============================================
+  .payment-plan-table
+  ├── caption.table-title            ("PAYMENT PLAN 30:70")
+  ├── thead
+  │   └── tr.table-header-row
+  │       ├── th                     (Date of Payment)
+  │       ├── th                     (%)
+  │       └── th                     (Amount AED)
+  └── tbody
+      └── tr (multiple rows)
+
+
+PROJECT GROUP MAP (IDENTIFIER LISTS)
+  Property Details Group
+  - Project Name: #disp_project_footer
+  - Unit No: #display-unit-number
+  - Unit Type: #disp_unit_type
+  - Unit Model: #disp_title
+  - Maid's Room: #disp_row_maidsroom (if present)
+  - Laundry Room: #disp_row_laundry (if present)
+  - Store Room: #disp_row_store (if present)
+  - Views: #disp_views
+  - Internal Area (Sq.Ft): #disp_internal
+  - Balcony Area (Sq.Ft): #disp_balcony
+  - Total Area (Sq.Ft): #display-total-area
+
+  Financial Breakdown Group
+  - Original Price: #disp_original_price
+  - Selling Price: #disp_selling_price
+  - Paid Percentage: #disp_amount_paid_percent (if present)
+  - Refund (40% of Original Price): #disp_refund
+  - Resale Clause: #disp_resale_clause (if present)
+  - Balance Resale Clause (AED): #disp_balance_resale
+  - Premium (Selling Price - Original Price): #disp_premium
+  - Admin Fees (SAAS): #disp_admin_fees
+  - ADGM Reg Fees (2% Original Price): #disp_adgm_transfer
+  - ADGM Termination fee: #disp_adgm_termination
+  - ADGM Electronic Service fee: #disp_adgm_electronic
+  - Agency Fees (2% of Selling Price + Vat): #disp_agency_fees
+  - Total Initial Payments: #disp_total
+
+  Payment Plan Group
+  - Table: #previewPaymentPlanTable
+  - Body: #payment_plan_tbody
+
+CATEGORY NOTES (OFF-PLAN vs READY)
+  Off-Plan (Primary)
+  - Off-Plan rows are shown/hidden via #disp_row_refund, #disp_row_balance_resale,
+    #disp_row_premium and the Payment Plan group.
+
+  Ready (Secondary)
+  - Property Status Table: #propertyStatusTable
+  - Project Completion: #disp_projecthandover (row: #disp_row_projecthandover)
+  - Project Age: #disp_projectage (row: #disp_row_projectage)
+  - Unit Received: #disp_unithandover (row: #disp_row_unithandover)
+  - Unit Ownership: #disp_unitownership (row: #disp_row_unitownership)
+  - Status: #disp_occupancy (row: #disp_row_occupancy)
+  - Current Rent: #disp_currentrent (row: #disp_row_currentrent)
+  - Lease Until: #disp_leaseuntil (row: #disp_row_leaseuntil)
+  - Service Charge: #disp_servicecharge (row: #disp_row_servicecharge)
+================================================================================
+*/
+
+/* ============================================
+   A4 PAGE CONTAINER
+   ============================================
+   FRONTEND: The white "paper" document in the preview panel
+   HTML ID: #a4Page
+   LOCATION: Inside #previewArea (right side of screen)
+
+   This is the root container for the entire sales offer document.
+   Width/height are set per template (landscape=297x210mm, portrait=210x297mm).
+*/
+#a4Page {
+    background: var(--paper-bg);               /* Off-white paper color (#fafafa) */
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);   /* Shadow makes paper "float" */
+    position: relative;                        /* For absolute child positioning */
+    box-sizing: border-box;
+    transform-origin: center top;              /* Scale from top-center (zoom feature) */
+    overflow: hidden;                          /* Clip overflow content */
+    border: 1px solid var(--text-secondary);   /* Light border defines edge */
+}
+/* Note: Width & height set in css/templates/*.css */
+
+/* ============================================
+   HEADER BAR
+   ============================================
+   FRONTEND: Teal/brand-colored horizontal bar at very top of document
+   HTML CLASS: .header-bar
+   LOCATION: First visible element in #a4Page
+
+   Color set via: Settings modal → Branding tab → Primary Color
+   CSS variable: --primary-color (default #62c6c1)
+*/
+.header-bar {
+    width: 100%;
+    height: 8mm;                               /* Default height, overridden per template */
+    background-color: var(--primary-color, #62c6c1);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* ============================================
+   LOGO AREA
+   ============================================
+   FRONTEND: Company logo container in top-right corner
+   HTML CLASS: .logo-area
+   HTML ID (image): #logoImg
+   LOCATION: Absolute positioned, overlaps header bar
+
+   Set via: Settings modal → Branding tab → Upload Logo
+*/
+.logo-area {
+    position: absolute;
+    top: 12mm;                                 /* Below header bar */
+    right: 15mm;                               /* Inset from right */
+    width: 120px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;                                /* Above header bar */
+}
+
+/* Logo image - scales to fit container */
+.logo-img {
+    max-height: 55px;
+    max-width: 100%;
+    width: auto;
+    object-fit: contain;
+}
+
+/* ============================================
+   DOCUMENT HEADER / MAIN TITLE
+   ============================================
+   FRONTEND: Title section showing unit model
+   HTML CLASS: .document-header
+   LOCATION: Below header bar, above content columns
+
+   Contains:
+   - .section-label: Small "FLOOR PLANS" text (optional)
+   - .main-title: Large unit model text (e.g., "2 BEDROOM + MAID")
+
+   Value comes from: Sidebar → Unit Model dropdown (id="select-unit-model")
+   Display element: #disp_title
+*/
+.document-header {
+    margin-bottom: 15px;
+    margin-top: 5mm;
+}
+
+/* Small label above title (e.g., "FLOOR PLANS") */
+.section-label {
+    font-size: 12px;
+    color: var(--text-dark);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+/* Main title (e.g., "2 BEDROOM + MAID") */
+.main-title {
+    font-size: 36px;                           /* Overridden per template */
+    color: var(--text-dark);
+    font-weight: 900;
+    margin-bottom: 15px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+/* ============================================
+   CONTENT ROW (Two-Column Layout Container)
+   ============================================
+   FRONTEND: Container for left column (tables) and right column (floor plan)
+   HTML CLASS: .content-row
+   LOCATION: Main content area between header and footer
+
+   Default is horizontal flexbox. Portrait template overrides to column.
+*/
+.content-row {
+    display: flex;
+    gap: 30px;                                 /* Space between columns */
+}
+
+/* ============================================
+   LEFT COLUMN - Data Tables Container
+   ============================================
+   FRONTEND: Contains all data tables stacked vertically
+   HTML CLASS: .column-left
+   WIDTH: 40% (landscape), 100% (portrait)
+
+   CONTAINS (in order):
+   1. PROPERTY DETAILS table
+      - HTML ID: #propertyDetailsTable
+      - Fields: Unit No, Unit Type, Views, Internal Area, Balcony, Total Area
+      - Sidebar inputs: #u_unit_number, #u_unit_type, #u_views, etc.
+
+   2. FINANCIAL BREAKDOWN table
+      - HTML ID: #financialTable
+      - Fields: Original Price, Selling Price, Refund, Balance, Premium,
+                Admin Fees, ADGM, Agency Fees, Total Initial Payment
+      - Sidebar inputs: #u_original_price, #u_selling_price, etc.
+
+   3. PROPERTY STATUS table (Ready Property mode only)
+      - HTML ID: #propertyStatusTable
+      - Fields: Project Completion, Age, Ownership, Occupancy, Rent, etc.
+
+   4. PAYMENT PLAN table (Off-Plan mode only)
+      - HTML ID: #previewPaymentPlanTable
+      - Columns: Date of Payment, %, Amount (AED)
+      - Edited via: Sidebar → Payment Plan section
+*/
+.column-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* ============================================
+   RIGHT COLUMN - Floor Plan Container
+   ============================================
+   FRONTEND: Contains the floor plan image frame
+   HTML CLASS: .column-right
+   WIDTH: 60% (landscape), 100% (portrait)
+
+   Contains .floorplan-frame which holds #floorPlanImg
+*/
+.column-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* ============================================
+   FLOOR PLAN IMAGE
+   ============================================
+   FRONTEND: The uploaded floor plan image
+   HTML ID: #floorPlanImg
+   LOCATION: Inside .floorplan-frame in .column-right
+
+   Uploaded via: Sidebar → Floor Plan section → Upload button
+   Stored as: base64 data URL in localStorage
+*/
+#floorPlanImg {
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.603));  /* Subtle shadow */
+}
+
+/* Floor plan frame container */
+.floorplan-frame {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* ============================================
+   IMAGE PLACEHOLDER
+   ============================================
+   FRONTEND: Shown when no floor plan image is uploaded
+   HTML CLASS: .img-placeholder
+   LOCATION: Inside .floorplan-frame when #floorPlanImg is hidden
+
+   Dashed border indicates "drop zone" / upload area.
+*/
+.img-placeholder {
+    text-align: center;
+    border: 2px dashed var(--text-secondary);
+    padding: 40px;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.placeholder-title {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text-gray-medium);
+    margin-bottom: 8px;
+}
+
+.placeholder-sub {
+    font-size: 12px;
+    color: var(--text-gray-medium);
+}
+
+/* ============================================
+   TABLE TITLE (Section Headers)
+   ============================================
+   FRONTEND: Section headers for each table
+   HTML ELEMENT: <caption class="table-title">
+   EXAMPLES: "PROPERTY DETAILS", "FINANCIAL BREAKDOWN", "PAYMENT PLAN 30:70"
+
+   Uses brand teal color by default.
+*/
+.table-title {
+    caption-side: top;
+    text-align: left;
+    color: var(--primary-color, #62c6c1);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 0 6px 0;
+    text-transform: uppercase;
+}
+
+/* First table - no top padding needed */
+.data-table:first-of-type .table-title {
+    padding-top: 0;
+}
+
+/* ============================================
+   DATA TABLES
+   ============================================
+   FRONTEND: Two-column tables (label | value)
+   HTML CLASS: .data-table
+   HTML IDs: #propertyDetailsTable, #financialTable, #propertyStatusTable
+
+   Used for Property Details and Financial Breakdown sections.
+*/
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.625rem;                       /* 10px */
+    margin-bottom: 10px;
+}
+
+/* Table header cells */
+.data-table th {
+    text-align: left;
+    color: var(--primary-color, #62c6c1);
+    font-weight: 700;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-light);
+    background-color: transparent;
+    text-transform: capitalize;
+}
+
+/* Header row variant */
+.table-header-row th {
+    text-align: left;
+    border-bottom: none;
+    font-size: 0.6875rem;                      /* 11px */
+    padding: 3px 0;
+    color: var(--primary-color, #62c6c1);
+    font-weight: 700;
+}
+
+/* Table data cells */
+.data-table td {
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-lighter);
+    color: var(--border-color);
+    vertical-align: middle;
+}
+
+/* First column - label cell */
+.data-table td:first-child {
+    padding-right: 10px;
+}
+
+/* Last column - value cell (right-aligned) */
+.data-table td:last-child {
+    padding-left: 10px;
+    text-align: right;
+}
+
+/* ============================================
+   ROW LABEL
+   ============================================
+   FRONTEND: Left column of data tables - field names
+   HTML CLASS: .row-label
+   EXAMPLES: "Unit No", "Selling Price", "Agency Fees"
+
+   Display elements have IDs like: #disp_row_unit_number, #disp_row_selling_price
+*/
+.row-label {
+    font-weight: 600;
+    width: 65%;
+    color: var(--text-gray);
+}
+
+/* ============================================
+   ROW VALUE
+   ============================================
+   FRONTEND: Right column of data tables - field values
+   HTML CLASS: .row-value, .row-value-bold
+   EXAMPLES: "AED 2,500,000", "1,092.32 Sq.Ft"
+
+   Display elements have IDs like: #disp_selling_price, #disp_total_area
+*/
+.row-value {
+    font-weight: 500;
+    color: var(--text-emphasis);
+}
+
+.row-value-bold {
+    font-weight: 700;
+    color: var(--text-emphasis);
+}
+
+/* ============================================
+   DIVIDER ROW
+   ============================================
+   FRONTEND: Empty row for visual separation between field groups
+   HTML CLASS: .divider-row
+   EXAMPLE: Between price fields and fee fields in Financial table
+*/
+.divider-row {
+    height: 12px;
+    border-bottom: none !important;
+}
+
+/* ============================================
+   TOTAL ROW
+   ============================================
+   FRONTEND: "Total Initial Payment" row at bottom of Financial table
+   HTML CLASS: .total-row
+   HTML ID: #disp_row_total, value in #disp_total
+
+   Visually distinct with top border and larger text.
+*/
+.total-row td {
+    border-top: 2px solid var(--border-light);
+    border-bottom: none;
+    font-weight: 800;
+    color: var(--text-dark);
+    padding-top: 8px;
+    padding-bottom: 0;
+    font-size: 0.6875rem;                      /* 11px */
+}
+
+/* ============================================
+   PAYMENT PLAN TABLE
+   ============================================
+   FRONTEND: Payment milestones table (Off-Plan Resale mode only)
+   HTML CLASS: .payment-plan-table
+   HTML ID: #previewPaymentPlanTable
+   LOCATION: Below Financial table in .column-left
+
+   Columns:
+   1. Date of Payment (left-aligned)
+   2. % (center-aligned)
+   3. Amount AED (right-aligned)
+
+   Edited via: Sidebar → Payment Plan section → Add/Edit rows
+   Rows are sortable (drag to reorder)
+*/
+.payment-plan-table {
+    margin-top: 0 !important;
+}
+
+.payment-plan-table th {
+    font-size: 0.6875rem;                      /* 11px */
+    padding: 3px 0;
+    border-bottom: none;
+}
+
+.payment-plan-table td {
+    padding: 3px 0;
+}
+
+/* Column 1: Date of Payment - left aligned */
+.payment-plan-table th:nth-child(1),
+.payment-plan-table td:nth-child(1) {
+    text-align: left;
+}
+
+/* Column 2: Percentage - centered */
+.payment-plan-table th:nth-child(2),
+.payment-plan-table td:nth-child(2) {
+    text-align: center;
+}
+
+/* Column 3: Amount - right aligned */
+.payment-plan-table th:nth-child(3),
+.payment-plan-table td:nth-child(3) {
+    text-align: right;
+}
+
+/* ============================================
+   FOOTNOTE / DISCLAIMER
+   ============================================
+   FRONTEND: Small disclaimer text at bottom of left column
+   HTML CLASS: .footnote
+   LOCATION: Below payment plan table
+
+   Optional text, usually for legal disclaimers.
+*/
+.footnote {
+    margin-top: 15px;
+    font-size: 0.5625rem;                      /* 9px */
+    color: var(--text-gray);
+    font-style: italic;
+    max-width: 60%;
+}
+
+/* ============================================
+   FOOTER AREA (Project Name & Sale Offer)
+   ============================================
+   FRONTEND: Project name and "SALE OFFER" in bottom-right corner
+   HTML CLASS: .footer-area
+   LOCATION: Absolute positioned, bottom-right of #a4Page
+
+   Contains:
+   - .footer-proj: Project name (e.g., "REEM ELEVEN")
+     HTML ID: #disp_project_footer
+   - .footer-sub: "SALE OFFER" text
+
+   Project name from: Sidebar → Project Name input (id="input-project-name")
+*/
+.footer-area {
+    position: absolute;
+    bottom: 12mm;
+    right: 15mm;
+    text-align: right;
+}
+
+/* Project name */
+.footer-proj {
+    font-weight: 900;
+    font-size: 14px;
+    color: var(--text-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* "SALE OFFER" subtitle */
+.footer-sub {
+    font-size: 0.625rem;                       /* 10px */
+    color: var(--primary-color, #62c6c1);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+/* ============================================
+   CREATED BY FOOTER (Agent Credit Line)
+   ============================================
+   FRONTEND: Small centered text at very bottom of document
+   HTML CLASS: .created-by-footer
+   HTML ID: #createdByText (the text content)
+   LOCATION: Absolute positioned, bottom-center of #a4Page
+
+   Shows: "Created by [Agent Name]"
+   Set via: Settings modal → Branding tab → Created By field
+*/
+.created-by-footer {
+    position: absolute;
+    bottom: 5mm;
+    left: 15mm;
+    right: 15mm;
+    text-align: center;
+    font-size: 8px;
+    color: var(--text-gray-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================
+   SCREEN MEDIA ADJUSTMENTS
+   ============================================
+   Slightly larger fonts for screen display.
+   Print uses the base sizes above.
+*/
+@media screen {
+    .footnote {
+        font-size: 0.625rem;                   /* 10px on screen */
+    }
+
+    .created-by-footer {
+        font-size: 0.5625rem;                  /* 9px on screen */
+    }
+}
+

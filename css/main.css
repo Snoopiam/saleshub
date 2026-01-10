@@ -1,0 +1,1973 @@
+/*
+================================================================================
+MAIN.CSS - Input Panel & UI Component Styles
+================================================================================
+
+PURPOSE: Styles for the left sidebar (input panel) and shared UI components.
+         Does NOT include preview document styles (see preview.css).
+
+FRONTEND LAYOUT (Visual Map):
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LEFT SIDEBAR (#inputPanel)     │  RIGHT PREVIEW (#previewArea)            │
+│  Width: 380px                   │  Flex-grow: 1                            │
+│  ┌───────────────────────────┐  │  ┌─────────────────────────────────────┐ │
+│  │ .panel-header             │  │  │                                     │ │
+│  │  ├── .app-title           │  │  │    A4 DOCUMENT PREVIEW              │ │
+│  │  ├── #betaToggle          │  │  │    (see preview.css)                │ │
+│  │  └── #templateSelect      │  │  │                                     │ │
+│  ├───────────────────────────┤  │  │    #a4Page                          │ │
+│  │ .category-toggle          │  │  │                                     │ │
+│  │  ├── [Off-Plan] [Ready]   │  │  └─────────────────────────────────────┘ │
+│  ├───────────────────────────┤  │                                          │
+│  │ PROPERTY DETAILS          │  │                                          │
+│  │  ├── #u_project           │  │                                          │
+│  │  ├── #u_unit_number       │  │                                          │
+│  │  ├── #u_unit_type         │  │                                          │
+│  │  ├── #u_unit_model        │  │                                          │
+│  │  ├── #u_views             │  │                                          │
+│  │  ├── #u_internal_area     │  │                                          │
+│  │  ├── #u_balcony_area      │  │                                          │
+│  │  └── #u_total_area        │  │                                          │
+│  ├───────────────────────────┤  │                                          │
+│  │ FINANCIAL BREAKDOWN       │  │                                          │
+│  │  ├── #u_original_price    │  │                                          │
+│  │  ├── #u_selling_price     │  │                                          │
+│  │  ├── #u_refund (+🔒)      │  │                                          │
+│  │  ├── #u_balance           │  │                                          │
+│  │  ├── #u_premium (+🔒)     │  │                                          │
+│  │  ├── #u_admin_fees        │  │                                          │
+│  │  ├── #u_adgm (+🔒)        │  │                                          │
+│  │  ├── #u_agency_fees (+🔒) │  │                                          │
+│  │  └── #totalDisplay        │  │                                          │
+│  ├───────────────────────────┤  │                                          │
+│  │ PAYMENT PLAN TABLE        │  │                                          │
+│  │  └── #paymentPlanTable    │  │                                          │
+│  │       └── tbody (rows)    │  │                                          │
+│  ├───────────────────────────┤  │                                          │
+│  │ FLOOR PLAN                │  │                                          │
+│  │  └── #floorPlanInput      │  │                                          │
+│  ├───────────────────────────┤  │                                          │
+│  │ ACTION BUTTONS            │  │                                          │
+│  │  ├── #saveTemplateBtn     │  │                                          │
+│  │  ├── #exportBtn           │  │                                          │
+│  │  └── #printBtn            │  │                                          │
+│  └───────────────────────────┘  │                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+MODALS (Overlays triggered by buttons):
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SETTINGS MODAL (#settingsModal)                                             │
+│  ├── Branding Tab: Logo upload, Primary Color, Company Name                │
+│  ├── Labels Tab: Custom field labels (Refund, Balance, Premium, etc.)      │
+│  ├── AI Settings Tab: Gemini API Key, Test Connection                      │
+│  └── About Tab: Version, Credits, Beta Toggle                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ EXPORT MODAL (#exportModal)                                                 │
+│  ├── PDF Export (via html2pdf or jsPDF)                                     │
+│  ├── PNG Export (screenshot of preview)                                     │
+│  └── JSON Export (data backup)                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ AI IMPORT MODAL (#aiImportModal)                                            │
+│  ├── File Upload Zone (drag/drop)                                           │
+│  ├── Processing Indicator (spinner)                                         │
+│  └── Extracted Data Panel                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ TEMPLATE MODAL (#templateModal)                                             │
+│  └── Saved Templates List                                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+INPUT FIELD NAMING CONVENTION:
+  - #u_* : User input fields in sidebar (e.g., #u_project, #u_selling_price)
+  - #disp_* : Display elements in preview (e.g., #disp_project, #disp_selling_price)
+  - +🔒 indicates field has lock button for auto-calculation override
+
+SECTIONS IN THIS FILE:
+1. CSS Variables (:root)         - Color palette, spacing, focus states
+2. Base Styles                   - Body layout, box-sizing
+3. Input Panel (#inputPanel)     - Left sidebar container
+4. Section Styles                - Headers, dividers, blocks
+5. Input Styles                  - Form fields, labels, lock buttons
+6. Grid Layouts                  - .grid-2 for two-column layouts
+7. Buttons                       - .btn variants (primary, secondary, etc.)
+8. Total Display                 - Total Initial Payment box
+9. Payment Plan Table            - Editable payment schedule
+10. Action Buttons               - Bottom action bar
+11. Modal Styles                 - Settings, Export, AI Import modals
+12. Utility Classes              - .hidden, .mt-*, .flex, etc.
+13. Accessibility                - Focus states, skip links
+14. Category/Occupancy Toggles   - Button group toggles
+15. Toggle Switch                - Checkbox styled as switch
+
+CSS VARIABLE NAMING:
+- --primary-color: Brand teal color (#62c6c1)
+- --bg-*: Background colors (dark, darker, input)
+- --text-*: Text colors (primary=white, secondary=gray, muted=lighter gray)
+- --*-color: Status colors (danger=red, success=green, warning=amber)
+
+================================================================================
+*/
+
+/* ============================================
+   1. CSS VARIABLES - Color palette & theming
+   ============================================ */
+:root {
+    /* Brand Colors */
+    --primary-color: #62c6c1;
+    --primary-hover: #4aa8a4;
+
+    /* Background Colors (Dark Theme) */
+    --bg-dark: #111827;
+    --bg-darker: #0d1117;
+    --bg-input: #1f2937;
+    --bg-preview: #52525b;
+
+    /* Border Colors */
+    --border-color: #374151;
+    --border-light: #e5e7eb;
+    --border-lighter: #f3f4f6;
+
+    /* Text Colors (Dark Theme) */
+    --text-primary: #ffffff;
+    --text-secondary: #d1d5db;              /* Improved contrast: 7.1:1 */
+    --text-muted: #9ca3af;                  /* Improved contrast: 4.6:1 */
+
+    /* Text Colors (Light/Document Theme) */
+    --text-dark: #1f2937;                   /* Near-black for document text */
+    --text-gray: #4b5563;                   /* Medium-dark gray */
+    --text-gray-medium: #6b7280;            /* Medium gray - WCAG 5.0:1 */
+    --text-emphasis: #111827;               /* Maximum emphasis */
+
+    /* Document/Paper Colors */
+    --paper-bg: #fafafa;                    /* Off-white paper background */
+    --white: #ffffff;
+
+    /* Status Colors */
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+
+    /* Beta/Accent Colors */
+    --beta-color: #8b5cf6;                  /* Purple for beta features */
+    --beta-hover: #7c3aed;                  /* Darker purple */
+    --indigo-500: #6366f1;                  /* Indigo for gradients */
+    --indigo-600: #4f46e5;                  /* Darker indigo */
+
+    /* Third-party Brand Colors */
+    --whatsapp-color: #25D366;
+    --whatsapp-hover: #128C7E;
+
+    /* Focus States */
+    --focus-ring: 0 0 0 3px rgba(98, 198, 193, 0.5);
+}
+
+/* ============================================
+   2. BASE STYLES - Global resets & body layout
+   ============================================ */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--border-light);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* ============================================
+   3. INPUT PANEL - Left sidebar container
+   ============================================
+   FRONTEND: The dark left sidebar containing all form inputs
+   HTML ID: #inputPanel
+
+   STRUCTURE:
+   #inputPanel
+     ├── .panel-header
+     │     ├── .panel-header-row (.app-title + #betaToggle)
+     │     └── .template-selector (#templateSelect dropdown)
+     ├── .category-toggle ([Off-Plan Resale] [Ready Property])
+     ├── .section-block "Property Details"
+     │     ├── #u_project (→ #disp_project)
+     │     ├── #u_unit_number (→ #disp_unit_number)
+     │     ├── #u_unit_type (→ #disp_unit_type)
+     │     ├── #u_unit_model (→ #disp_title)
+     │     ├── #u_views (→ #disp_views)
+     │     ├── .grid-2 [#u_internal_area | #u_balcony_area]
+     │     └── #u_total_area (auto-calculated)
+     ├── .section-block "Financial Breakdown"
+     │     ├── #u_original_price (→ #disp_original_price)
+     │     ├── #u_selling_price (→ #disp_selling_price)
+     │     ├── #u_refund + #lockRefund (→ #disp_refund)
+     │     ├── #u_balance (→ #disp_balance)
+     │     ├── #u_premium + #lockPremium (→ #disp_premium)
+     │     ├── #u_admin_fees (→ #disp_admin_fees)
+     │     ├── #u_adgm + #lockAdgm (→ #disp_adgm)
+     │     ├── #u_agency_fees + #lockAgency (→ #disp_agency_fees)
+     │     └── .total-display (#totalValue)
+     ├── .section-block "Payment Plan" (Off-Plan only)
+     │     └── #paymentPlanTable → #previewPaymentPlanTable
+     ├── .section-block "Floor Plan"
+     │     └── #floorPlanInput → #floorPlanImg
+     └── .action-buttons
+           ├── #settingsBtn → #settingsModal
+           ├── #saveTemplateBtn → #templateModal
+           ├── #exportBtn → #exportModal
+           └── #printBtn (browser print dialog)
+   ============================================ */
+#inputPanel {
+    width: 380px;                              /* Fixed width - doesn't change with window resize */
+    background: var(--bg-dark);                /* Dark background (#111827) */
+    color: var(--text-primary);                /* White text */
+    padding: 12px 16px;                        /* Inner spacing */
+    overflow-y: auto;                          /* Scroll when content exceeds height */
+    flex-shrink: 0;                            /* Don't shrink when preview area needs space */
+    border-right: 1px solid var(--border-color); /* Divider between panels */
+    display: flex;                             /* Flexbox for vertical layout */
+    flex-direction: column;                    /* Stack children vertically */
+}
+
+/* ============================================
+   PANEL HEADER (.panel-header)
+   ============================================
+   Top of input panel containing app title
+   and template selector dropdown.
+   ============================================ */
+.panel-header {
+    margin-bottom: 10px;                       /* Space below header before content */
+}
+
+/* Header row - title and BETA toggle side by side */
+.panel-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* App title - "SalesHUB" in teal with underline */
+.app-title {
+    font-size: 1.25rem;                        /* 20px */
+    font-weight: 700;                          /* Bold */
+    color: var(--primary-color);               /* Teal */
+    border-bottom: 1px solid var(--border-color); /* Underline separator */
+    padding-bottom: 6px;                       /* Space above underline */
+    margin: 0 0 8px 0;                         /* Space below */
+}
+
+/* Template dropdown container */
+.template-selector {
+    margin-top: 4px;                           /* Small gap above dropdown */
+}
+
+/* ============================================
+   4. SECTION STYLES
+   ============================================
+   Used to group related form fields.
+   .section-title: Headers like "Property Details"
+   .section-divider: Horizontal lines between sections
+   .section-block: Container for a group of fields
+   ============================================ */
+.section-title {
+    font-size: 0.75rem;                        /* 12px - small uppercase header */
+    font-weight: 700;                          /* Bold */
+    color: var(--text-secondary);              /* Light gray */
+    text-transform: uppercase;                 /* PROPERTY DETAILS */
+    letter-spacing: 0.05em;                    /* Slight letter spacing */
+    margin: 1px 0 4px 0;                       /* Tight margins */
+}
+
+/* Specific 5px gap between Total Area and Financial Breakdown
+   This uses adjacent sibling selector (+) to target .section-title
+   that immediately follows #totalAreaGroup */
+#totalAreaGroup {
+    margin-bottom: 5px;                        /* Space after Total Area field */
+}
+#totalAreaGroup + .section-title {
+    margin-top: 0;                             /* Remove top margin when following Total Area */
+}
+
+/* Horizontal divider between sections */
+.section-divider {
+    border: none;                              /* Remove default hr styling */
+    border-top: 1px solid var(--border-color); /* Just a top border line */
+    margin: 8px 0;                             /* Vertical spacing */
+}
+
+/* Container for a group of related fields */
+.section-block {
+    margin-bottom: 6px;                        /* Space between blocks */
+}
+
+/* ============================================
+   5. INPUT STYLES
+   ============================================
+   Form field styling for text inputs, selects,
+   textareas, and labels.
+   ============================================ */
+
+/* Container for label + input pair */
+.input-group {
+    margin-bottom: 4px;                        /* Tight spacing between fields */
+}
+
+/* Field labels - uppercase, small, gray */
+.input-label {
+    display: block;                            /* Full width, own line */
+    font-size: 0.6875rem;                      /* 11px - Small text */
+    color: var(--text-secondary);              /* Light gray */
+    margin-bottom: 2px;                        /* Small gap before input */
+    font-weight: 600;                          /* Semi-bold */
+    text-transform: uppercase;                 /* FIELD NAME */
+}
+
+/* Text inputs, selects, textareas
+   Dark background with light text for dark theme */
+.input-field {
+    width: 100%;                               /* Full width of container */
+    background: var(--bg-input);               /* Slightly lighter than panel (#1f2937) */
+    border: 1px solid var(--border-color);     /* Subtle border */
+    color: var(--text-primary);                /* White text */
+    padding: 6px 10px;                         /* Inner spacing */
+    font-size: 13px;                           /* Readable text size */
+    border-radius: 4px;                        /* Rounded corners */
+    font-family: inherit;                      /* Use Montserrat */
+    transition: border-color 0.2s;             /* Smooth focus effect */
+}
+
+.input-field:focus {
+    border-color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.input-field:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Placeholder text - lighter gray for hint text */
+.input-field::placeholder {
+    color: var(--text-muted);              /* Muted gray - indicates non-essential hint text */
+}
+
+/* Calculated field state - indicates auto-calculated values
+   User can lock field to override calculation */
+.input-field.calculated {
+    background: var(--bg-darker);          /* Darker background shows it's read-only */
+    color: var(--primary-color);           /* Teal text indicates calculated value */
+}
+
+/* Error state - red border highlights invalid input */
+.input-field.error {
+    border-color: var(--danger-color);     /* Red border = validation error */
+}
+
+/* Disabled state - field cannot be edited */
+.input-field:disabled {
+    opacity: 0.6;                          /* Faded appearance = disabled */
+    cursor: not-allowed;                   /* Not-allowed cursor shows it's disabled */
+}
+
+/* Select dropdown styling */
+select.input-field {
+    appearance: none;                      /* Remove default browser styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;                   /* Space for dropdown arrow */
+    cursor: pointer;
+}
+
+select.input-field:focus {
+    border-color: var(--primary-color);
+}
+
+select.input-field option {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+/* ============================================
+   LOCK BUTTON (.lock-btn)
+   ============================================
+   Used on calculated fields to toggle between:
+   - Auto-calculated (unlocked): Field value computed automatically
+   - Manual override (locked): User can enter custom value
+
+   VISUAL STATES:
+   - Unlocked: Dark background, shows open lock icon
+   - Locked: Teal background, shows closed lock icon, field becomes editable
+   - Hover: Lighter background for feedback
+
+   LAYOUT:
+   Input + Lock button in flexbox with 4px gap
+   Input takes remaining space, lock button is fixed width
+   ============================================ */
+.input-with-lock {
+    display: flex;                         /* Horizontal layout: [Input][Lock Button] */
+    gap: 4px;                              /* 4px space between input and button */
+}
+
+.input-with-lock .input-field {
+    flex: 1;                               /* Input takes all available space */
+}
+
+/* Lock button - default (unlocked) state */
+.lock-btn {
+    background: var(--bg-input);           /* Same as input background */
+    border: 1px solid var(--border-color); /* Subtle border */
+    border-radius: 4px;                    /* Match input field corners */
+    padding: 4px 6px;                      /* Compact padding for icon */
+    cursor: pointer;                       /* Hand cursor = clickable */
+    transition: all 0.2s;                  /* Smooth state transitions */
+}
+
+/* Hover state - provides interactive feedback */
+.lock-btn:hover {
+    background: var(--border-color);       /* Slightly lighter on hover */
+}
+
+/* Locked state - indicates manual override is active */
+.lock-btn.locked {
+    background: var(--primary-color);      /* Teal background = locked */
+    border-color: var(--primary-color);    /* Match border to background */
+}
+
+/* Lock icon color when locked - dark icon on teal background */
+.lock-btn.locked .lock-icon {
+    stroke: var(--bg-dark);                /* Dark stroke for contrast */
+}
+
+/* Lock icon - SVG sizing and color */
+.lock-icon {
+    width: 16px;                           /* Square icon dimensions */
+    height: 16px;
+    stroke: var(--text-secondary);         /* Light gray stroke when unlocked */
+}
+
+/* Ensure lock button meets 24x24px touch target (WCAG 2.5.8) */
+.lock-btn {
+    min-width: 24px;
+    min-height: 24px;
+}
+
+/* ============================================
+   GRID LAYOUTS (.grid-2)
+   ============================================
+   Two-column grid for laying out fields side by side.
+   Used for: Internal Area | Balcony Area, etc.
+
+   RESPONSIVE DESIGN:
+   On small screens, this should collapse to single column,
+   but current design targets desktop use (380px fixed width).
+
+   GAP SPACING:
+   6px gap creates visual separation without wasting space
+   in the compact input panel.
+
+   EQUAL COLUMNS:
+   1fr 1fr = equal width columns that share available space
+   ============================================ */
+.grid-2 {
+    display: grid;                         /* CSS Grid layout (modern, flexible) */
+    grid-template-columns: 1fr 1fr;        /* Two equal-width columns */
+    gap: 6px;                              /* 6px space between columns */
+}
+
+/* ============================================
+   BUTTON STYLES (.btn variants)
+   ============================================
+   Consistent button styling across the app.
+   All buttons share base .btn class, then add variant:
+
+   BUTTON HIERARCHY:
+   .btn-primary:   Main action (Save, Apply) - Teal, high contrast
+   .btn-secondary: Secondary actions (Cancel, Close) - Gray, subtle
+   .btn-accent:    Special actions (AI Import) - Purple gradient
+   .btn-danger:    Destructive actions (Delete, Clear) - Red
+   .btn-whatsapp:  WhatsApp share - Green (BETA feature)
+
+   SIZE VARIANTS:
+   .btn:       Default size (8px × 14px padding)
+   .btn-small: Small size (6px × 12px padding, smaller font)
+
+   ACCESSIBILITY:
+   - Focus states use outline for keyboard navigation
+   - Color contrast meets WCAG AA standards
+   - Buttons use flexbox for centering icon + text
+   ============================================ */
+
+/* Base button style - shared by all button variants */
+.btn {
+    display: inline-flex;                  /* Flexbox for icon + text layout */
+    align-items: center;                   /* Vertical center */
+    justify-content: center;               /* Horizontal center */
+    gap: 6px;                              /* Space between icon and text */
+    padding: 8px 14px;                     /* Inner spacing */
+    font-size: 13px;                       /* Readable text size */
+    font-weight: 600;                      /* Semi-bold for emphasis */
+    border-radius: 6px;                    /* Rounded corners (modern look) */
+    border: none;                          /* Remove default button border */
+    cursor: pointer;                       /* Hand cursor = clickable */
+    transition: all 0.2s;                  /* Smooth hover effects */
+    font-family: inherit;                  /* Use Montserrat from body */
+}
+
+/* Small button variant - for compact areas */
+.btn-small {
+    padding: 6px 12px;                     /* Reduced padding */
+    font-size: 12px;                       /* Smaller text */
+}
+
+/* PRIMARY BUTTON - Main actions (Save, Export, etc.)
+   Teal background, dark text for strong contrast */
+.btn-primary {
+    background: var(--primary-color);      /* Brand teal (#62c6c1) */
+    color: var(--bg-dark);                 /* Dark text on light background */
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);      /* Slightly darker on hover */
+}
+
+/* SECONDARY BUTTON - Less important actions (Cancel, Close)
+   Dark gray, subtle appearance */
+.btn-secondary {
+    background: var(--bg-input);           /* Dark gray background */
+    color: var(--text-primary);            /* White text */
+    border: 1px solid var(--border-color); /* Subtle border for definition */
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);       /* Lighter on hover */
+}
+
+/* ACCENT BUTTON - Special features (AI Import)
+   Purple gradient for "premium" or "new" features */
+.btn-accent {
+    background: linear-gradient(135deg, var(--beta-color), var(--indigo-500));  /* Purple to indigo gradient */
+    color: white;                          /* White text for contrast */
+}
+
+.btn-accent:hover {
+    background: linear-gradient(135deg, var(--beta-hover), var(--indigo-600));  /* Darker gradient on hover */
+}
+
+/* DANGER BUTTON - Destructive actions (Delete, Clear All)
+   Red background warns user of destructive action */
+.btn-danger {
+    background: var(--danger-color);       /* Red (#ef4444) */
+    color: white;                          /* White text */
+}
+
+.btn-danger:hover {
+    background: var(--danger-hover);       /* Darker red on hover */
+}
+
+/* Import Buttons */
+.import-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.import-buttons .btn {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* File Upload */
+.file-upload-btn {
+    display: block;
+    background: var(--bg-input);
+    border: 1px dashed var(--border-color);
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.file-upload-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* ============================================
+   TOTAL DISPLAY (.total-display)
+   ============================================
+   Prominent box showing "Total Initial Payment" at bottom of financial section.
+
+   VISUAL HIERARCHY:
+   - Teal border draws attention as most important number
+   - Darker background sets it apart from input fields
+   - Large bold number for readability
+   - Flexbox layout: label on left, value on right
+
+   TYPOGRAPHY:
+   - Label: 11px uppercase (subtle, contextual)
+   - Value: 16px bold (prominent, easy to scan)
+   - Teal color for value matches brand and border
+
+   SPACING:
+   8px top margin creates visual separation from fields above
+   ============================================ */
+.total-display {
+    background: var(--bg-darker);          /* Dark background for contrast */
+    border: 1px solid var(--primary-color); /* Teal border highlights importance */
+    border-radius: 6px;                    /* Rounded corners match buttons */
+    padding: 8px 12px;                     /* Inner spacing */
+    display: flex;                         /* Horizontal layout */
+    justify-content: space-between;        /* Push label left, value right */
+    align-items: center;                   /* Vertical center */
+    margin-top: 8px;                       /* Space above (after last field) */
+}
+
+/* "Total Initial Payment" label */
+.total-label {
+    font-size: 0.6875rem;                  /* 11px - Small text */
+    font-weight: 600;                      /* Semi-bold */
+    color: var(--text-secondary);          /* Light gray - less prominent than value */
+    text-transform: uppercase;             /* ALL CAPS for label style */
+}
+
+/* "AED 1,234,567" value */
+.total-value {
+    font-size: 16px;                       /* Large, easy to read */
+    font-weight: 800;                      /* Extra bold for emphasis */
+    color: var(--primary-color);           /* Teal matches border */
+}
+
+/* ============================================
+   PAYMENT PLAN TABLE (.payment-table)
+   ============================================
+   FRONTEND: Editable payment schedule in sidebar (Off-Plan only)
+   HTML ID: #paymentPlanTable (sidebar) → #previewPaymentPlanTable (preview)
+
+   SIDEBAR TABLE STRUCTURE (#paymentPlanTable):
+   ┌──────────────────────────────────────────────────────────────┐
+   │ DESCRIPTION     │ PERCENTAGE │ AMOUNT           │ ×         │
+   ├──────────────────────────────────────────────────────────────┤
+   │ [On Booking   ] │ [10%     ] │ [AED 250,000   ] │ [×]       │
+   │ [Dec 2024     ] │ [20%     ] │ [AED 500,000   ] │ [×]       │
+   │ [Handover     ] │ [70%     ] │ [AED 1,750,000 ] │ [×]       │
+   └──────────────────────────────────────────────────────────────┘
+   │ [+ Add Row]                                                  │
+   ├──────────────────────────────────────────────────────────────┤
+   │ .payment-summary: AED Paid: X | Balance: Y                   │
+   │ .validation-msg: ✓ 100% or ⚠ Does not equal 100%            │
+   └──────────────────────────────────────────────────────────────┘
+
+   TABLE COLUMNS:
+   - Column 1: .desc-input (Description: "On Booking", "Q1 2025", etc.)
+   - Column 2: .pct-input (Percentage: "10", "20", etc.)
+   - Column 3: .amt-input (Amount: auto-calculated from Original Price × %)
+   - Column 4: .delete-row-btn (× button to remove row)
+
+   ROW OPERATIONS:
+   - #addPaymentRowBtn: Adds new empty row to tbody
+   - .delete-row-btn: Removes that row from table
+   - Drag rows: SortableJS reorders tbody rows
+
+   PREVIEW SYNC:
+   Sidebar #paymentPlanTable → Preview #previewPaymentPlanTable
+   Changes sync via JavaScript event listeners
+
+   FUNCTIONALITY:
+   - SortableJS enables drag-and-drop row reordering
+   - Delete button (×) removes individual rows
+   - Inputs are editable: amount, date, description
+   - Auto-calculates: AED Paid (sum), Balance (price - paid)
+
+   VISUAL DESIGN:
+   - Collapsed borders for clean grid appearance
+   - Column headers in uppercase gray text
+   - Focus states highlight active input
+
+   DRAG-DROP STATES:
+   - cursor: grab (indicates draggable)
+   - cursor: grabbing (while dragging)
+   - opacity: 0.4 (ghost element during drag)
+
+   ACCESSIBILITY:
+   - Semantic table markup (thead, tbody, tr, th, td)
+   - Keyboard-accessible inputs and delete buttons
+   ============================================ */
+/* Payment Plan Table */
+.payment-table {
+    width: 100%;                           /* Full width of container */
+    border-collapse: collapse;             /* Merge borders for clean grid */
+    font-size: 12px;                       /* Compact text size */
+}
+
+/* Table header cells - column labels */
+.payment-table th {
+    text-align: left;                      /* Left-aligned headers */
+    padding: 6px 8px;                      /* Cell padding */
+    color: var(--text-secondary);          /* Gray text */
+    font-weight: 600;                      /* Semi-bold */
+    font-size: 0.625rem;                   /* 10px - Small text */
+    text-transform: uppercase;             /* ALL CAPS labels */
+    border-bottom: 1px solid var(--border-color); /* Header separator */
+}
+
+/* Table data cells */
+.payment-table td {
+    padding: 4px 8px;                      /* Compact cell padding */
+}
+
+/* Inputs inside table cells - inline editing */
+.payment-table input {
+    width: 100%;                           /* Fill cell width */
+    background: var(--bg-input);           /* Dark input background */
+    border: 1px solid var(--border-color); /* Subtle border */
+    color: var(--text-primary);            /* White text */
+    padding: 4px 6px;                      /* Inner spacing */
+    font-size: 12px;                       /* Readable size */
+    border-radius: 3px;                    /* Subtle rounding */
+}
+
+/* Focus state - teal border highlights active input */
+.payment-table input:focus {
+    border-color: var(--primary-color);    /* Teal border on focus */
+    outline: 2px solid var(--primary-color); /* Visible focus ring for WCAG 2.4.7 */
+    outline-offset: 2px;
+}
+
+/* Delete row button (× icon) */
+.payment-table .delete-row-btn {
+    background: none;                      /* Transparent background */
+    border: none;                          /* No border */
+    color: var(--text-muted);              /* Dim gray */
+    cursor: pointer;                       /* Hand cursor */
+    padding: 4px;                          /* Small clickable area */
+    font-size: 16px;                       /* Large × icon */
+    line-height: 1;                        /* Tight line height */
+}
+
+/* Delete button hover - turns red (destructive action) */
+.payment-table .delete-row-btn:hover {
+    color: var(--danger-color);            /* Red color warns user */
+}
+
+/* DRAG-AND-DROP STATES (SortableJS integration) */
+
+/* Default state - open hand indicates row is draggable */
+.payment-table tbody tr {
+    cursor: grab;                          /* Open hand = draggable */
+}
+
+/* While actively dragging a row */
+.payment-table tbody tr:active {
+    cursor: grabbing;                      /* Closed hand = dragging */
+}
+
+/* Ghost element (placeholder during drag) */
+.payment-table tbody tr.sortable-ghost {
+    opacity: 0.4;                          /* Faded to show drag state */
+}
+
+/* Payment summary (AED Paid / Balance) - below table */
+.payment-summary {
+    display: flex;                         /* Horizontal layout */
+    justify-content: space-between;        /* Push left and right */
+    align-items: center;                   /* Vertical center */
+    margin-top: 4px;                       /* Space above */
+    font-size: 12px;                       /* Small text */
+    color: var(--text-secondary);          /* Gray text */
+}
+
+/* Validation messages (error/success) */
+.validation-msg {
+    font-size: 0.6875rem;                  /* 11px - Small text */
+}
+
+.validation-msg.error {
+    color: var(--danger-color);            /* Red for errors */
+}
+
+.validation-msg.success {
+    color: var(--success-color);           /* Green for success */
+}
+
+/* ============================================
+   ACTION BUTTONS (.action-buttons)
+   ============================================
+   Container for primary action buttons (Save, Export, Print).
+   Typically at bottom of form or modal footer.
+
+   LAYOUT:
+   - Flexbox with 8px gap between buttons
+   - Each button takes equal width (flex: 1)
+   - Responsive to container width
+   ============================================ */
+.action-buttons {
+    display: flex;                         /* Horizontal layout */
+    gap: 8px;                              /* Space between buttons */
+}
+
+/* Make buttons equal width */
+.action-buttons .btn {
+    flex: 1;                               /* Equal width distribution */
+}
+
+/* ============================================
+   PREVIEW AREA (#previewArea)
+   ============================================
+   Right panel showing A4 document preview.
+
+   DESIGN:
+   - Gray background (#52525b) contrasts with white A4 page
+   - Flexbox centers the preview vertically and horizontally
+   - overflow: auto allows scrolling for large documents
+   - 40px padding creates breathing room around preview
+
+   RESPONSIVE:
+   - flex-grow: 1 takes remaining horizontal space
+   - Scales to fit screen height (100vh from parent)
+   ============================================ */
+#previewArea {
+    flex-grow: 1;                          /* Take remaining width */
+    background: var(--bg-preview);         /* Gray zinc background */
+    padding: 40px;                         /* Breathing room */
+    display: flex;                         /* Flexbox for centering */
+    justify-content: center;               /* Horizontal center */
+    align-items: flex-start;               /* Top align to avoid clipping when content overflows */
+    overflow: auto;                        /* Scroll if content overflows */
+}
+
+/* ============================================
+   MODAL SYSTEM (.modal)
+   ============================================
+   Full-screen overlay dialogs for settings, templates, export, etc.
+
+   FRONTEND MODALS:
+
+   #settingsModal - Settings (triggered by #settingsBtn / gear icon)
+     ├── .settings-tabs
+     │     ├── [Branding] → #brandingTab
+     │     │     ├── #brandLogoInput (file upload → .logo-preview)
+     │     │     ├── #brandPrimaryColor (color picker → --primary-color)
+     │     │     └── #brandCompanyName (text → #disp_company footer)
+     │     ├── [Labels] → #labelsTab
+     │     │     ├── #labelRefund (text → label in Financial table)
+     │     │     ├── #labelBalance, #labelPremium, #labelAdminFees...
+     │     │     └── Custom labels for each financial field
+     │     ├── [AI Settings] → #aiSettingsTab
+     │     │     ├── #geminiApiKey (API key input)
+     │     │     └── #testApiBtn (Test Connection button)
+     │     └── [About] → #aboutTab
+     │           ├── Version info, Credits
+     │           └── #betaToggle (Enable beta features)
+     └── .modal-footer [Save Settings] [Cancel]
+
+   #exportModal - Export Options (triggered by #exportBtn)
+     ├── .export-options (radio buttons)
+     │     ├── PDF Export → html2pdf / jsPDF
+     │     ├── PNG Export → html2canvas
+     │     └── JSON Export → data backup
+     └── .modal-footer [Export] [Cancel]
+
+   #aiImportModal - AI Document Import (triggered by AI Import btn)
+     ├── .file-upload-zone (drag & drop area)
+     │     └── #aiFileInput (hidden file input)
+     ├── .processing-indicator (.spinner + text)
+     ├── .extracted-data (parsed data display)
+     │     └── .extracted-data-row (field: value pairs)
+     └── .modal-footer [Apply Data] [Cancel]
+
+   #templateModal - Saved Templates (triggered by #saveTemplateBtn)
+     ├── .templates-list
+     │     └── .template-item (template name + actions)
+     └── .modal-footer [New Template] [Close]
+
+   STRUCTURE:
+   .modal
+     ├── .modal-backdrop (dark overlay)
+     └── .modal-content (actual dialog box)
+           ├── .modal-header (title + close button)
+           ├── .modal-body (scrollable content)
+           └── .modal-footer (action buttons)
+
+   BEHAVIOR:
+   - z-index: 1000 overlays all content
+   - .hidden class toggles visibility
+   - Flexbox centers modal on screen
+   - Backdrop is absolute (covers screen), content is relative (on top)
+
+   SIZE VARIANTS:
+   - Default: max-width 500px
+   - .modal-small: max-width 400px (for simple dialogs)
+
+   ACCESSIBILITY:
+   - Focus trap (JavaScript handles)
+   - ESC key closes modal (JavaScript)
+   - Click backdrop closes modal (JavaScript)
+   ============================================ */
+
+/* Modal container - fixed fullscreen overlay */
+.modal {
+    position: fixed;                       /* Fixed position (stays during scroll) */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;                         /* Above all content */
+    display: flex;                         /* Flexbox for centering */
+    align-items: center;                   /* Vertical center */
+    justify-content: center;               /* Horizontal center */
+}
+
+/* Hidden state - JavaScript toggles this class */
+.modal.hidden {
+    display: none;                         /* Completely remove from layout */
+}
+
+/* Dark semi-transparent backdrop (covers screen) */
+.modal-backdrop {
+    position: absolute;                    /* Absolute within fixed modal */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);        /* 70% black overlay */
+}
+
+/* Modal dialog box (actual content container) */
+.modal-content {
+    position: relative;                    /* Relative to position above backdrop */
+    background: var(--bg-dark);            /* Dark background (#18181b) */
+    border-radius: 12px;                   /* Large rounded corners */
+    width: 90%;                            /* Responsive width (90% on mobile) */
+    max-width: 500px;                      /* Maximum width on desktop */
+    max-height: 90vh;                      /* Maximum 90% of viewport height */
+    overflow: hidden;                      /* Clip content to rounded corners */
+    display: flex;                         /* Vertical layout */
+    flex-direction: column;                /* Stack header/body/footer */
+    border: 1px solid var(--border-color); /* Subtle border */
+}
+
+/* Small modal variant - for simple dialogs */
+.modal-content.modal-small {
+    max-width: 400px;                      /* Narrower width */
+}
+
+/* Modal header - title bar with close button */
+.modal-header {
+    display: flex;                         /* Horizontal layout */
+    justify-content: space-between;        /* Title left, close button right */
+    align-items: center;                   /* Vertical center */
+    padding: 16px 20px;                    /* Inner spacing */
+    border-bottom: 1px solid var(--border-color); /* Separator line */
+}
+
+/* Modal title (h3) */
+.modal-header h3 {
+    margin: 0;                             /* Remove default margin */
+    font-size: 16px;                       /* Medium text */
+    font-weight: 700;                      /* Bold */
+    color: var(--text-primary);            /* White text */
+}
+
+/* Close button (× icon) */
+.modal-close {
+    background: none;                      /* Transparent background */
+    border: none;                          /* No border */
+    color: var(--text-secondary);          /* Gray text */
+    font-size: 24px;                       /* Large × icon */
+    cursor: pointer;                       /* Hand cursor */
+    padding: 0;                            /* No padding */
+    line-height: 1;                        /* Tight line height */
+}
+
+.modal-close:hover {
+    color: var(--text-primary);            /* White on hover */
+}
+
+/* Modal body - scrollable content area */
+.modal-body {
+    padding: 20px;                         /* Inner spacing */
+    overflow-y: auto;                      /* Scroll if content overflows */
+    flex: 1;                               /* Take remaining vertical space */
+}
+
+/* Modal footer - action buttons */
+.modal-footer {
+    display: flex;                         /* Horizontal layout */
+    justify-content: flex-end;             /* Buttons aligned right */
+    gap: 8px;                              /* Space between buttons */
+    padding: 16px 20px;                    /* Inner spacing */
+    border-top: 1px solid var(--border-color); /* Separator line */
+}
+
+/* ============================================
+   SETTINGS TABS (.settings-tabs, .tab-btn)
+   ============================================
+   Tab navigation system for Settings modal.
+   Tabs: Branding, Template, Export, About
+
+   BEHAVIOR:
+   - JavaScript toggles .active class on click
+   - .active tab shows with teal text + dark background
+   - Content panels (.tab-content) show/hide based on .active
+
+   VISUAL DESIGN:
+   - Horizontal flex layout with 4px gap
+   - Border-bottom separator under all tabs
+   - Hover state lightens background
+   - Active state uses brand color (teal)
+
+   ACCESSIBILITY:
+   - role="tablist" and aria attributes (JavaScript)
+   - Keyboard navigation (arrow keys, JavaScript)
+   ============================================ */
+/* Settings Tabs */
+.settings-tabs {
+    display: flex;                         /* Horizontal tab row */
+    gap: 4px;                              /* Space between tabs */
+    margin-bottom: 20px;                   /* Space below tabs */
+    border-bottom: 1px solid var(--border-color); /* Separator line */
+    padding-bottom: 12px;                  /* Space above border */
+}
+
+/* Individual tab button */
+.tab-btn {
+    background: none;                      /* Transparent background */
+    border: none;                          /* No border */
+    color: var(--text-secondary);          /* Gray text (inactive) */
+    padding: 8px 16px;                     /* Inner spacing */
+    font-size: 13px;                       /* Medium text */
+    font-weight: 600;                      /* Semi-bold */
+    cursor: pointer;                       /* Hand cursor */
+    border-radius: 4px;                    /* Rounded corners */
+    transition: all 0.2s;                  /* Smooth hover */
+}
+
+/* Hover state - lighter text and background */
+.tab-btn:hover {
+    color: var(--text-primary);            /* White text */
+    background: var(--bg-input);           /* Dark background */
+}
+
+/* Active tab - teal color indicates selection */
+.tab-btn.active {
+    color: var(--primary-color);           /* Teal text */
+    background: var(--bg-input);           /* Dark background */
+}
+
+/* Tab content panels - only one visible at a time */
+.tab-content {
+    display: none;                         /* Hidden by default */
+}
+
+/* Active tab content - visible */
+.tab-content.active {
+    display: block;                        /* Show when active */
+}
+
+/* ============================================
+   COLOR PICKER (.color-picker-row)
+   ============================================
+   Custom color selection for brand colors in Settings.
+   Combines native <input type="color"> with text field.
+
+   LAYOUT:
+   - Flexbox: color picker (50px) + text input (flex: 1)
+   - 8px gap between elements
+   - Text input shows HEX code in uppercase
+
+   USER FLOW:
+   1. Click color swatch to open native color picker
+   2. OR type HEX code directly in text field
+   3. Both inputs sync bidirectionally (JavaScript)
+   ============================================ */
+/* Color Picker */
+.color-picker-row {
+    display: flex;                         /* Horizontal layout */
+    gap: 8px;                              /* Space between picker and input */
+}
+
+/* Native color picker input - visual swatch */
+.color-picker-row input[type="color"] {
+    width: 50px;                           /* Fixed width square */
+    height: 38px;                          /* Match text input height */
+    border: 1px solid var(--border-color); /* Subtle border */
+    border-radius: 4px;                    /* Rounded corners */
+    cursor: pointer;                       /* Hand cursor = clickable */
+    padding: 2px;                          /* Small inner padding */
+}
+
+/* HEX code text input - shows #RRGGBB */
+.color-picker-row .input-field {
+    flex: 1;                               /* Take remaining space */
+    text-transform: uppercase;             /* HEX codes in uppercase */
+}
+
+/* ============================================
+   LOGO PREVIEW (.logo-preview)
+   ============================================
+   Shows uploaded logo in Settings > Branding tab.
+
+   DISPLAY:
+   - Dark background panel below file upload
+   - Centers logo image
+   - Max height 60px (maintains aspect ratio)
+   - Max width 100% (prevents overflow)
+
+   RESPONSIVE:
+   - Image scales down on small screens
+   - Maintains aspect ratio (no stretching)
+   ============================================ */
+/* Logo Preview */
+.logo-preview {
+    margin-top: 8px;                       /* Space above */
+    padding: 12px;                         /* Inner spacing */
+    background: var(--bg-input);           /* Dark background */
+    border-radius: 4px;                    /* Rounded corners */
+    text-align: center;                    /* Center content */
+}
+
+/* Logo image - constrained size */
+.logo-preview img {
+    max-height: 60px;                      /* Maximum height */
+    max-width: 100%;                       /* Never overflow container */
+}
+
+/* ============================================
+   EXPORT OPTIONS (.export-options)
+   ============================================
+   Radio button list for PDF template selection.
+   Options: Portrait, Landscape, Minimal
+
+   VISUAL DESIGN:
+   - Each option is a clickable card (radio + label)
+   - Dark background with border
+   - Hover state: teal border highlights option
+   - Radio button aligned to top (radio + multi-line label)
+
+   LAYOUT:
+   - Vertical stack (flex-direction: column)
+   - 8px gap between options
+   - Radio input positioned at top (margin-top: 4px)
+   ============================================ */
+/* Export Options */
+.export-options {
+    display: flex;                         /* Vertical stack */
+    flex-direction: column;                /* Stack vertically */
+    gap: 8px;                              /* Space between options */
+}
+
+/* Individual export option card */
+.export-option {
+    display: flex;                         /* Horizontal layout */
+    align-items: flex-start;               /* Align to top (multi-line label) */
+    gap: 12px;                             /* Space between radio and label */
+    padding: 12px;                         /* Inner spacing */
+    background: var(--bg-input);           /* Dark background */
+    border: 1px solid var(--border-color); /* Subtle border */
+    border-radius: 6px;                    /* Rounded corners */
+    cursor: pointer;                       /* Entire card is clickable */
+    transition: all 0.2s;                  /* Smooth hover */
+}
+
+/* Hover state - teal border highlights option */
+.export-option:hover {
+    border-color: var(--primary-color);    /* Teal border on hover */
+}
+
+/* Radio input alignment */
+.export-option input {
+    margin-top: 4px;                       /* Align with first line of text */
+}
+
+/* Label container (strong title + small description) */
+.export-option .option-label {
+    display: flex;                         /* Vertical stack */
+    flex-direction: column;                /* Stack title and description */
+    gap: 2px;                              /* Small space between lines */
+}
+
+/* Option title ("Portrait A4", "Landscape A4", etc.) */
+.export-option .option-label strong {
+    color: var(--text-primary);            /* White text */
+    font-size: 14px;                       /* Medium text */
+}
+
+/* Option description ("Standard vertical layout...") */
+.export-option .option-label small {
+    color: var(--text-secondary);          /* Gray text */
+    font-size: 12px;                       /* Small text */
+}
+
+/* ============================================
+   TEMPLATES LIST (.templates-list)
+   ============================================
+   Scrollable list of saved templates in Settings > Template tab.
+   Each item shows template name + actions (load, delete).
+
+   FUNCTIONALITY:
+   - Click template name to load it
+   - Hover shows delete button (× icon)
+   - Max height 200px with scroll (overflow-y: auto)
+
+   VISUAL DESIGN:
+   - Bordered box with rounded corners
+   - Each item has bottom border (except last)
+   - Hover state: darker background
+   ============================================ */
+/* Templates List */
+.templates-list {
+    max-height: 200px;                     /* Limit height, scroll if needed */
+    overflow-y: auto;                      /* Vertical scrolling */
+    border: 1px solid var(--border-color); /* Container border */
+    border-radius: 4px;                    /* Rounded corners */
+}
+
+/* Individual template item (clickable row) */
+.template-item {
+    display: flex;                         /* Horizontal layout */
+    justify-content: space-between;        /* Name left, actions right */
+    align-items: center;                   /* Vertical center */
+    padding: 10px 12px;                    /* Inner spacing */
+    border-bottom: 1px solid var(--border-color); /* Row separator */
+    cursor: pointer;                       /* Entire row is clickable */
+    transition: background 0.2s;           /* Smooth hover */
+}
+
+/* Remove border from last item */
+.template-item:last-child {
+    border-bottom: none;                   /* Clean bottom edge */
+}
+
+/* Hover state - darker background */
+.template-item:hover {
+    background: var(--bg-input);           /* Dark background on hover */
+}
+
+/* Template name text */
+.template-item-name {
+    font-size: 13px;                       /* Medium text */
+    color: var(--text-primary);            /* White text */
+}
+
+/* Action buttons container (delete, etc.) */
+.template-item-actions {
+    display: flex;                         /* Horizontal layout */
+    gap: 4px;                              /* Space between buttons */
+}
+
+/* Action button (× icon) */
+.template-item-actions button {
+    background: none;                      /* Transparent */
+    border: none;                          /* No border */
+    color: var(--text-muted);              /* Dim gray */
+    cursor: pointer;                       /* Hand cursor */
+    padding: 4px;                          /* Small clickable area */
+    font-size: 14px;                       /* Icon size */
+}
+
+/* Action button hover - turns red (destructive) */
+.template-item-actions button:hover {
+    color: var(--danger-color);            /* Red warns of deletion */
+}
+
+/* ============================================
+   AI IMPORT - FILE UPLOAD ZONE
+   ============================================
+   Drag-and-drop area for Excel file upload (AI Import modal).
+
+   FUNCTIONALITY:
+   - Click to open file picker (input type="file")
+   - Drag Excel file over zone to upload
+   - .dragover class applied during drag (JavaScript)
+
+   VISUAL STATES:
+   - Default: Gray dashed border, secondary text
+   - Hover: Teal border, light teal background
+   - Dragover: Teal border, darker teal background
+
+   FEEDBACK:
+   - Spinning animation during processing
+   - Extracted data displayed in .extracted-data panel
+   - Success/error status in .api-status
+   ============================================ */
+/* AI Import */
+.file-upload-zone {
+    display: flex;                         /* Vertical layout */
+    flex-direction: column;                /* Stack icon, text, hint */
+    align-items: center;                   /* Horizontal center */
+    justify-content: center;               /* Vertical center */
+    padding: 40px;                         /* Large clickable area */
+    border: 2px dashed var(--border-color); /* Dashed border (drop zone) */
+    border-radius: 8px;                    /* Rounded corners */
+    cursor: pointer;                       /* Hand cursor = clickable */
+    transition: all 0.2s;                  /* Smooth state changes */
+    text-align: center;                    /* Center text */
+    color: var(--text-secondary);          /* Gray text */
+}
+
+/* Hover state - teal border and light background */
+.file-upload-zone:hover {
+    border-color: var(--primary-color);    /* Teal border */
+    background: rgba(98, 198, 193, 0.05);  /* 5% teal background */
+}
+
+/* Dragover state - file is being dragged over zone */
+.file-upload-zone.dragover {
+    border-color: var(--primary-color);    /* Teal border */
+    background: rgba(98, 198, 193, 0.1);   /* 10% teal background (darker) */
+}
+
+/* Hint text ("Supported: .xlsx, .xls") */
+.file-upload-zone small {
+    margin-top: 8px;                       /* Space above */
+    font-size: 0.6875rem;                  /* 11px - Small text */
+    color: var(--text-muted);              /* Dim gray */
+}
+
+/* Processing indicator - shown during AI extraction */
+.processing-indicator {
+    display: flex;                         /* Vertical layout */
+    flex-direction: column;                /* Stack spinner + text */
+    align-items: center;                   /* Horizontal center */
+    padding: 40px;                         /* Vertical spacing */
+}
+
+/* Spinning loader animation */
+.spinner {
+    width: 40px;                           /* Circle size */
+    height: 40px;                          /* Circle size */
+    border: 3px solid var(--border-color); /* Gray circle */
+    border-top-color: var(--primary-color); /* Teal top (spinning part) */
+    border-radius: 50%;                    /* Perfect circle */
+    animation: spin 1s linear infinite;    /* Rotate forever */
+}
+
+/* Keyframes for spinning animation */
+@keyframes spin {
+    to { transform: rotate(360deg); }      /* Rotate full circle */
+}
+
+/* Extracted data panel - shows AI-parsed fields */
+.extracted-data {
+    background: var(--bg-input);           /* Dark background */
+    border-radius: 6px;                    /* Rounded corners */
+    padding: 16px;                         /* Inner spacing */
+    max-height: 300px;                     /* Limit height, scroll if needed */
+    overflow-y: auto;                      /* Vertical scrolling */
+}
+
+/* Individual field row (label: value) */
+.extracted-data-row {
+    display: flex;                         /* Horizontal layout */
+    justify-content: space-between;        /* Label left, value right */
+    padding: 6px 0;                        /* Vertical spacing */
+    border-bottom: 1px solid var(--border-color); /* Row separator */
+    font-size: 13px;                       /* Medium text */
+}
+
+/* Remove border from last row */
+.extracted-data-row:last-child {
+    border-bottom: none;                   /* Clean bottom edge */
+}
+
+/* Field label ("Property Price", "Unit No", etc.) */
+.extracted-data-row .label {
+    color: var(--text-secondary);          /* Gray text */
+}
+
+/* Field value ("AED 1,234,567", "A-101", etc.) */
+.extracted-data-row .value {
+    color: var(--text-primary);            /* White text */
+    font-weight: 500;                      /* Medium weight */
+}
+
+/* ============================================
+   API STATUS INDICATOR (.api-status)
+   ============================================
+   Shows success/error messages from AI Import API.
+   Displayed after file upload attempt.
+
+   STATES:
+   - .success: Green border + background (API key valid)
+   - .error: Red border + background (API key missing/invalid)
+
+   VISUAL DESIGN:
+   - Semi-transparent background (10% opacity)
+   - Colored border matches text color
+   - Small text (12px) with padding
+   ============================================ */
+/* API Status */
+.api-status {
+    margin-top: 12px;                      /* Space above */
+    padding: 10px;                         /* Inner spacing */
+    border-radius: 4px;                    /* Rounded corners */
+    font-size: 12px;                       /* Small text */
+}
+
+/* Success state - green (API key valid) */
+.api-status.success {
+    background: rgba(16, 185, 129, 0.1);   /* 10% green background */
+    color: var(--success-color);           /* Green text (#10b981) */
+    border: 1px solid var(--success-color); /* Green border */
+}
+
+/* Error state - red (API key missing/invalid) */
+.api-status.error {
+    background: rgba(239, 68, 68, 0.1);    /* 10% red background */
+    color: var(--danger-color);            /* Red text (#ef4444) */
+    border: 1px solid var(--danger-color); /* Red border */
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================
+   Quick helper classes for common layout patterns.
+   Inspired by Tailwind CSS naming conventions.
+
+   CATEGORIES:
+   - Visibility: .hidden
+   - Spacing: .mt-*, .mb-*, .gap-*
+   - Layout: .flex, .flex-1
+   - Typography: .text-sm, .text-gray-400
+   - Sizing: .w-*, .h-*
+
+   USAGE:
+   Add these classes directly to HTML elements
+   for quick styling without custom CSS.
+   ============================================ */
+/* Utility Classes */
+
+/* Visibility - completely hide element */
+.hidden {
+    display: none !important;              /* !important overrides other display values */
+}
+
+/* Margin Top - vertical spacing above element */
+.mt-2 { margin-top: 6px; }                 /* Small spacing */
+.mt-3 { margin-top: 8px; }                 /* Medium spacing */
+.mt-4 { margin-top: 12px; }                /* Large spacing */
+
+/* Margin Bottom - vertical spacing below element */
+.mb-4 { margin-bottom: 12px; }             /* Large spacing */
+
+/* Flexbox - quick flex container */
+.flex { display: flex; }                   /* Horizontal flex layout */
+
+/* Flex Item - take remaining space */
+.flex-1 { flex: 1; }                       /* Grow to fill available space */
+
+/* Gap - space between flex/grid children */
+.gap-2 { gap: 6px; }                       /* Small gap */
+
+/* Typography - text size */
+.text-sm { font-size: 13px; }              /* Small text */
+
+/* Typography - text color */
+.text-gray-400 { color: var(--text-secondary); } /* Gray text */
+
+/* Width - fixed widths for icons */
+.w-4 { width: 16px; }                      /* Small icon (16px) */
+.h-4 { height: 16px; }                     /* Small icon height */
+.w-5 { width: 20px; }                      /* Medium icon (20px) */
+.h-5 { height: 20px; }                     /* Medium icon height */
+
+/* ============================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+
+/* Skip Link for keyboard navigation */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    background: var(--primary-color);
+    color: var(--bg-dark);
+    padding: 12px 24px;
+    text-decoration: none;
+    z-index: 10000;
+    font-weight: 700;
+    border-radius: 0 0 8px 0;
+    transition: top 0.2s;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--bg-dark);
+    outline-offset: 2px;
+}
+
+/* Visually Hidden but accessible to screen readers */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+.visually-hidden:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* Fieldset reset for layout purposes */
+.fieldset-reset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Improved focus indicators for buttons */
+.btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: var(--focus-ring);
+}
+
+.lock-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.lock-btn:focus-visible {
+    box-shadow: var(--focus-ring);
+}
+
+/* Tab button focus */
+.tab-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Modal close button focus */
+.modal-close:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* File upload button keyboard interaction */
+.file-upload-btn:focus,
+.file-upload-btn:focus-within {
+    border-color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.file-upload-zone:focus {
+    border-color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Field error styling */
+.field-error {
+    color: var(--danger-color);
+    font-size: 0.6875rem; /* 11px */
+    margin-top: 4px;
+}
+
+.field-error.hidden {
+    display: none;
+}
+
+/* Improve template item focus */
+.template-item:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+/* Export option focus */
+.export-option:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: var(--focus-ring);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================
+   Adjusts layout for smaller screens.
+   At 768px and below, stack panels vertically.
+   ============================================ */
+@media (max-width: 768px) {
+    /* Body switches to vertical stacking */
+    body {
+        flex-direction: column;
+        height: auto;
+        overflow: auto;
+    }
+
+    /* Input panel takes full width on mobile */
+    #inputPanel {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Preview area adjusts for mobile */
+    #previewArea {
+        padding: 20px;
+        min-height: 50vh;
+    }
+
+    /* Grid layouts stack on mobile */
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    /* Action buttons wrap */
+    .action-buttons {
+        flex-wrap: wrap;
+    }
+
+    /* Modal adjusts for mobile */
+    .modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+}
+
+/* ============================================
+   PROPERTY CATEGORY TOGGLE
+   ============================================
+   FRONTEND: Button group at top of sidebar for property type selection
+   HTML CLASS: .category-toggle (container) + .category-btn (buttons)
+
+   CATEGORY TOGGLE (#categoryToggle):
+   ┌─────────────────────────────────────────────────────────────┐
+   │ [Off-Plan Resale] │ [Ready Property]                       │
+   │     .active       │                                        │
+   └─────────────────────────────────────────────────────────────┘
+
+   BUTTON IDs:
+   - #btnOffPlan: Off-Plan Resale category
+   - #btnReady: Ready Property category
+
+   CATEGORY EFFECTS:
+   Off-Plan Resale:
+     - Shows: Resale Clause %, Amount Paid, Payment Plan Table
+     - Shows: #u_resale_clause, #u_amount_paid, #paymentPlanSection
+     - Hides: Property Status section
+
+   Ready Property:
+     - Shows: Property Status, Occupancy Status, Service Charge
+     - Shows: #propertyStatusSection, .occupancy-toggle
+     - Hides: Payment Plan Table
+
+   OCCUPANCY TOGGLE (Ready Property only):
+   ┌─────────────────────────────────────────────────────────────┐
+   │ [Owner Occupied] │ [Vacant] │ [Leased]                     │
+   └─────────────────────────────────────────────────────────────┘
+   - #btnOwnerOccupied, #btnVacant, #btnLeased
+   - Leased shows: #u_current_rent, #u_lease_until
+
+   BEHAVIOR:
+   - JavaScript adds .active class to selected button
+   - Updates calculations based on category (Premium %, ADGM %)
+
+   VISUAL DESIGN:
+   - Dark container (bg-darker) with 4px padding
+   - Buttons are transparent until active
+   - Active button: primary color background
+   - Equal width buttons (flex: 1)
+
+   LAYOUT:
+   - Horizontal flex with 4px gap
+   - Rounded container (6px) and buttons (4px)
+
+   ACCESSIBILITY:
+   - role="group" for button group (JavaScript)
+   - aria-pressed for toggle state (JavaScript)
+   ============================================ */
+
+.category-toggle,
+.occupancy-toggle {
+    display: flex;                         /* Horizontal layout */
+    gap: 4px;                              /* Space between buttons */
+    background: var(--bg-darker);          /* Dark container background */
+    padding: 4px;                          /* Inner padding */
+    border-radius: 6px;                    /* Rounded container */
+}
+
+/* Individual category button */
+.category-btn,
+.occupancy-btn {
+    flex: 1;                               /* Equal width buttons */
+    background: transparent;               /* Transparent until active */
+    border: none;                          /* No border */
+    color: var(--text-secondary);          /* Gray text (inactive) */
+    padding: 8px 10px;                     /* Inner spacing */
+    font-size: 12px;                       /* Small text */
+    font-weight: 600;                      /* Semi-bold */
+    border-radius: 4px;                    /* Rounded corners */
+    cursor: pointer;                       /* Hand cursor */
+    transition: all 0.2s;                  /* Smooth state changes */
+    font-family: inherit;                  /* Use Montserrat */
+}
+
+/* Hover state - lighter text and background */
+.category-btn:hover,
+.occupancy-btn:hover {
+    color: var(--text-primary);            /* White text */
+    background: var(--bg-input);           /* Dark background */
+}
+
+/* Active state - teal background, dark text (selected) */
+.category-btn.active,
+.occupancy-btn.active {
+    background: var(--primary-color);      /* Teal background */
+    color: var(--bg-dark);                 /* Dark text for contrast */
+}
+
+/* Focus state for keyboard navigation */
+.category-btn:focus,
+.occupancy-btn:focus {
+    outline: 2px solid var(--primary-color); /* Teal outline */
+    outline-offset: 2px;                   /* Space outside button */
+}
+
+/* ============================================
+   TOGGLE SWITCH COMPONENT
+   ============================================
+   iOS-style toggle switch for boolean settings.
+
+   STRUCTURE:
+   .toggle-switch
+     └── input[type="checkbox"] (hidden)
+         └── .toggle-slider (visible track + knob)
+
+   STATES:
+   - Unchecked: Gray background, gray knob on left
+   - Checked: Teal background, dark knob on right
+
+   ANIMATION:
+   - Knob slides 20px to the right when checked
+   - Background color fades from gray to teal
+   - 0.3s transition for smooth animation
+
+   SIZE VARIANTS:
+   - Default: 44px × 24px (standard toggle)
+   - .extra-small: 28px × 16px (small toggle for labels)
+
+   USAGE:
+   Used for beta features toggle in Settings.
+   ============================================ */
+
+/* Toggle switch container */
+.toggle-switch-group {
+    display: flex;                         /* Horizontal layout */
+    align-items: center;                   /* Vertical center */
+    gap: 10px;                             /* Space between switch and label */
+}
+
+/* Small toggle switch group - reduced gap */
+.toggle-switch-group.small {
+    gap: 6px;                              /* Reduced gap for compact layouts */
+}
+
+/* Toggle switch track (44px × 24px) */
+.toggle-switch {
+    position: relative;                    /* Container for absolute slider */
+    display: inline-block;                 /* Inline with label */
+    width: 44px;                           /* Track width */
+    height: 24px;                          /* Track height */
+}
+
+/* Hide native checkbox input */
+.toggle-switch input {
+    opacity: 0;                            /* Invisible */
+    width: 0;                              /* No width */
+    height: 0;                             /* No height */
+}
+
+/* Slider (track + knob) */
+.toggle-slider {
+    position: absolute;                    /* Absolute within toggle-switch */
+    cursor: pointer;                       /* Hand cursor = clickable */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--bg-input);     /* Dark gray background (unchecked) */
+    border: 1px solid var(--border-color); /* Subtle border */
+    border-radius: 24px;                   /* Pill shape (fully rounded) */
+    transition: all 0.3s;                  /* Smooth state transitions */
+}
+
+/* Slider knob (circle inside track) */
+.toggle-slider:before {
+    position: absolute;                    /* Positioned within track */
+    content: "";                           /* Empty pseudo-element */
+    height: 18px;                          /* Knob height */
+    width: 18px;                           /* Knob width (circle) */
+    left: 2px;                             /* Start position (unchecked) */
+    bottom: 2px;                           /* Vertical center (2px padding) */
+    background-color: var(--text-secondary); /* Gray knob (unchecked) */
+    border-radius: 50%;                    /* Perfect circle */
+    transition: all 0.3s;                  /* Smooth slide animation */
+}
+
+/* Checked state - teal background */
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--primary-color); /* Teal background */
+    border-color: var(--primary-color);    /* Teal border */
+}
+
+/* Checked state - knob slides right and turns dark */
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(20px);           /* Slide 20px to the right */
+    background-color: var(--bg-dark);      /* Dark knob for contrast */
+}
+
+/* Focus state for keyboard navigation */
+.toggle-switch input:focus + .toggle-slider {
+    box-shadow: var(--focus-ring);         /* Teal glow */
+}
+
+/* Toggle label text */
+.toggle-label {
+    font-size: 13px;                       /* Medium text */
+    color: var(--text-secondary);          /* Gray text */
+    font-weight: 500;                      /* Medium weight */
+}
+
+/* ============================================
+   DATE FORMAT GROUP (Month/Quarter + Year)
+   ============================================
+   Compound input for flexible date formats.
+   Used for "Month–Year" or "Quarter–Year" dates.
+
+   STRUCTURE:
+   Two inputs side-by-side:
+   1. Select dropdown (75px) - Month (Jan, Feb...) or Quarter (Q1, Q2...)
+   2. Number input (70px) - Year (2024, 2025...)
+
+   LAYOUT:
+   - Horizontal flex with 4px gap
+   - Each input takes remaining space (flex: 1)
+   - Month/Quarter dropdown is fixed 75px
+   - Year input is fixed 70px
+   ============================================ */
+
+.date-format-group {
+    display: flex;                         /* Horizontal layout */
+    gap: 4px;                              /* Small gap between inputs */
+}
+
+/* Both inputs take remaining space by default */
+.date-format-group select,
+.date-format-group input {
+    flex: 1;                               /* Equal width distribution */
+}
+
+/* Month/Quarter select - fixed width */
+.date-format-group select:first-child {
+    flex: 0 0 75px;                        /* Fixed 75px (no grow/shrink) */
+}
+
+/* Year number input - fixed width */
+.date-format-group input[type="number"] {
+    flex: 0 0 70px;                        /* Fixed 70px (no grow/shrink) */
+}
+
+/* Small input variant - reduced padding */
+.input-field-small {
+    padding: 6px 8px;                      /* Smaller padding */
+    font-size: 12px;                       /* Smaller text */
+}
+
+/* ============================================
+   SECTION HEADERS WITH TOGGLES
+   ============================================
+   Headers that include toggle switches for section visibility.
+   Example: "Additional Terms" with toggle to show/hide
+
+   LAYOUT:
+   - Flexbox: title on left, toggle on right
+   - Removes default margin from title (margin-bottom: 0)
+   ============================================ */
+
+/* Header with toggle */
+.section-header-with-toggle {
+    display: flex;                         /* Horizontal layout */
+    align-items: center;                   /* Vertical center */
+    justify-content: space-between;        /* Title left, toggle right */
+    margin-bottom: 0.5rem;                 /* Space below */
+}
+
+/* Remove default margin from title */
+.section-header-with-toggle .section-title {
+    margin-bottom: 0;                      /* No margin (handled by parent) */
+}
+
+/* Label with toggle - smaller version for field labels */
+.label-with-toggle {
+    display: flex;                         /* Horizontal layout */
+    align-items: center;                   /* Vertical center */
+    justify-content: space-between;        /* Label left, toggle right */
+    margin-bottom: 0.25rem;                /* Small space below */
+}
+
+/* Remove default margin from label */
+.label-with-toggle .input-label {
+    margin-bottom: 0;                      /* No margin (handled by parent) */
+}
+
+/* ============================================
+   EXTRA-SMALL TOGGLE SWITCH (.extra-small)
+   ============================================
+   Smaller toggle variant for inline labels.
+   28px × 16px (instead of 44px × 24px)
+
+   USAGE:
+   Add .extra-small class to .toggle-switch element.
+   Used for compact areas where space is limited.
+   ============================================ */
+
+/* Extra-Small Toggle Switch - smaller dimensions */
+.toggle-switch.extra-small {
+    width: 28px;                           /* Reduced width */
+    height: 16px;                          /* Reduced height */
+}
+
+/* Extra-Small Slider knob - smaller circle */
+.toggle-switch.extra-small .toggle-slider:before {
+    height: 12px;                          /* Reduced knob height */
+    width: 12px;                           /* Reduced knob width */
+    left: 2px;                             /* Maintain 2px padding */
+    bottom: 2px;                           /* Maintain 2px padding */
+}

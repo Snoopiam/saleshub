@@ -5,6 +5,9 @@
 
 const puppeteerPdfService = require('../services/puppeteerPdfService');
 
+// Request timeout (60 seconds)
+const REQUEST_TIMEOUT_MS = 60000;
+
 /**
  * Generate high-quality PDF with real selectable text
  * POST /api/pdf/generate
@@ -18,15 +21,40 @@ async function generatePDF(req, res) {
       return res.status(400).json({ error: 'Offer data is required' });
     }
 
+    // Validate data is an object
+    if (typeof data !== 'object' || Array.isArray(data)) {
+      return res.status(400).json({
+        error: 'Invalid request',
+        message: 'data must be an object'
+      });
+    }
+
     console.log('[PDF] Generating PDF for:', data.projectName || 'Unnamed');
     console.log('[PDF] Template:', template || 'landscape');
 
-    // Generate PDF with Puppeteer
-    const pdfBuffer = await puppeteerPdfService.generatePDF(
-      data,
-      branding || {},
-      template || 'landscape'
-    );
+    // Create timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('PDF_TIMEOUT')), REQUEST_TIMEOUT_MS);
+    });
+
+    // Race between PDF generation and timeout
+    const pdfBuffer = await Promise.race([
+      puppeteerPdfService.generatePDF(
+        data,
+        branding || {},
+        template || 'landscape'
+      ),
+      timeoutPromise
+    ]);
+
+    // Validate buffer
+    if (!Buffer.isBuffer(pdfBuffer) || pdfBuffer.length === 0) {
+      console.error('[PDF] Invalid buffer returned');
+      return res.status(500).json({
+        error: 'PDF generation failed',
+        message: 'Generated PDF is empty or invalid'
+      });
+    }
 
     // Set headers for downloadable PDF
     const filename = sanitizeFilename(data.projectName || 'SalesHUB_Offer');
@@ -39,10 +67,32 @@ async function generatePDF(req, res) {
     res.send(pdfBuffer);
 
   } catch (error) {
-    console.error('[PDF] Generation Error:', error);
+    console.error('[PDF] Generation Error:', error.message);
+
+    // Handle timeout
+    if (error.message === 'PDF_TIMEOUT') {
+      return res.status(504).json({
+        error: 'PDF generation timeout',
+        message: 'The document took too long to generate. Try reducing image sizes.'
+      });
+    }
+
+    // Handle specific Puppeteer errors with user-friendly messages
+    let userMessage = 'An error occurred while generating the PDF. Please try again.';
+
+    if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+      userMessage = 'PDF generation took too long. Try reducing image sizes.';
+    } else if (error.message?.includes('Protocol error') || error.message?.includes('Target closed')) {
+      userMessage = 'Browser error occurred. Please try again.';
+    } else if (error.message?.includes('Connection closed')) {
+      userMessage = 'Browser connection lost. Please try again.';
+    } else if (error.message?.includes('memory') || error.message?.includes('OOM')) {
+      userMessage = 'Server ran out of memory. Try reducing image sizes.';
+    }
+
     res.status(500).json({
       error: 'PDF generation failed',
-      message: error.message
+      message: userMessage
     });
   }
 }
@@ -62,12 +112,16 @@ async function generatePreview(req, res) {
     // For now, redirect to client-side preview
     // Could implement server-side preview with Puppeteer screenshot if needed
     res.status(501).json({
+      error: 'Not Implemented',
       message: 'Server-side preview not implemented. Use client-side preview.'
     });
 
   } catch (error) {
-    console.error('[Preview] Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[Preview] Error:', error.message);
+    res.status(500).json({
+      error: 'Preview generation failed',
+      message: 'An error occurred while generating the preview.'
+    });
   }
 }
 

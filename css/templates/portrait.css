@@ -1,0 +1,286 @@
+/*
+================================================================================
+PORTRAIT.CSS - A4 Portrait Template
+================================================================================
+
+FRONTEND REFERENCE:
+  - Template selector: Dropdown in sidebar header (id="templateSelect")
+  - Applied when: User selects "Portrait" template
+  - Target element: #a4Page (the preview document on right side of screen)
+
+PAGE STRUCTURE (Visual Map - Vertical/Stacked Layout):
+  ┌─────────────────────────────────────┐
+  │ .header-bar (teal bar)     [LOGO]  │
+  ├─────────────────────────────────────┤
+  │ .document-header                    │
+  │   └── .main-title                   │
+  │       (e.g., "2 BEDROOM + MAID")    │
+  ├─────────────────────────────────────┤
+  │ .column-right (order: 1 = FIRST)    │
+  │ ┌─────────────────────────────────┐ │
+  │ │  .floorplan-frame               │ │
+  │ │    └── #floorPlanImg            │ │
+  │ │       (floor plan at top)       │ │
+  │ └─────────────────────────────────┘ │
+  ├─────────────────────────────────────┤
+  │ .column-left (order: 2 = SECOND)    │
+  │ ┌─────────────────────────────────┐ │
+  │ │ PROPERTY DETAILS table          │ │
+  │ └─────────────────────────────────┘ │
+  │ ┌─────────────────────────────────┐ │
+  │ │ FINANCIAL BREAKDOWN table       │ │
+  │ └─────────────────────────────────┘ │
+  │ ┌─────────────────────────────────┐ │
+  │ │ PAYMENT PLAN table              │ │
+  │ └─────────────────────────────────┘ │
+  ├─────────────────────────────────────┤
+  │              .footer-area           │
+  │            (PROJECT NAME)           │
+  │             (SALE OFFER)            │
+  ├─────────────────────────────────────┤
+  │       .created-by-footer            │
+  └─────────────────────────────────────┘
+
+LAYOUT NOTES:
+  - Vertical stacked layout (not side-by-side like landscape)
+  - Floor plan appears ABOVE tables (using CSS order property)
+  - order: 1 = shows first, order: 2 = shows second
+  - All columns are 100% width (full page width)
+  - More vertical space = larger fonts than landscape
+
+IDEAL FOR:
+  - Mobile device viewing
+  - Square or vertical floor plans
+  - Documents with less data (fewer payment rows)
+
+================================================================================
+*/
+
+/* ============================================
+   A4 PAGE CONTAINER - Portrait Orientation
+   ============================================
+   FRONTEND: The white A4 document preview on the right side of screen
+   HTML ID: #a4Page
+   DIMENSIONS: 210mm wide × 297mm tall (standard A4 portrait)
+
+   Applied when class "template-portrait" is added to #a4Page.
+*/
+#a4Page.template-portrait {
+    width: 210mm;                              /* A4 portrait width (narrow) */
+    height: 297mm;                             /* A4 portrait height (tall) */
+    padding: 12mm 15mm;                        /* Top/bottom 12mm, left/right 15mm */
+    display: flex;
+    flex-direction: column;                    /* Stack everything vertically */
+}
+
+/* ============================================
+   HEADER BAR
+   ============================================
+   FRONTEND: Teal/brand-colored horizontal bar at very top
+   HTML CLASS: .header-bar
+   LOCATION: First visible element in #a4Page
+
+   Slightly taller than landscape (10mm vs 8mm) for proportion.
+*/
+.template-portrait .header-bar {
+    height: 10mm;                              /* Taller header for portrait */
+}
+
+/* ============================================
+   LOGO AREA
+   ============================================
+   FRONTEND: Company logo in top-right corner
+   HTML CLASS: .logo-area
+   HTML ID (image): #logoImg
+
+   Set via: Settings modal → Branding tab → Upload Logo
+*/
+.template-portrait .logo-area {
+    top: 12mm;
+    right: 15mm;
+}
+
+.template-portrait .logo-img {
+    height: 35px;                              /* Smaller logo for portrait */
+}
+
+/* ============================================
+   DOCUMENT HEADER / MAIN TITLE
+   ============================================
+   FRONTEND: Large title showing unit model (e.g., "2 BEDROOM + MAID")
+   HTML CLASS: .document-header, .main-title
+   HTML ID: #disp_title (the text content)
+
+   Value comes from: Sidebar → Unit Model dropdown (id="select-unit-model")
+*/
+.template-portrait .document-header {
+    margin-top: 8mm;
+    margin-bottom: 20px;
+}
+
+.template-portrait .section-label {
+    font-size: 0.6875rem;                      /* 11px */
+}
+
+.template-portrait .main-title {
+    font-size: 32px;                           /* Smaller than landscape (40px) */
+    margin-bottom: 20px;
+}
+
+/* ============================================
+   CONTENT ROW (Stacked Layout Container)
+   ============================================
+   FRONTEND: Container for floor plan and tables
+   HTML CLASS: .content-row
+
+   In portrait mode, this uses flex-direction: column
+   to stack children vertically instead of side-by-side.
+*/
+.template-portrait .content-row {
+    display: flex;
+    flex-direction: column;                    /* Stack vertically */
+    gap: 20px;
+}
+
+/* ============================================
+   LEFT COLUMN - All Data Tables (SHOWS SECOND)
+   ============================================
+   FRONTEND: Contains all data tables
+   HTML CLASS: .column-left
+   ORDER: 2 (displays BELOW floor plan)
+
+   CONTAINS:
+   1. PROPERTY DETAILS table (#propertyDetailsTable)
+      - Unit No, Unit Type, Views, Areas
+
+   2. FINANCIAL BREAKDOWN table (#financialTable)
+      - Prices, Fees, Total
+
+   3. PROPERTY STATUS table (#propertyStatusTable) - Ready Property only
+   4. PAYMENT PLAN table (#previewPaymentPlanTable) - Off-Plan only
+*/
+.template-portrait .column-left {
+    width: 100%;                               /* Full width (not 40% like landscape) */
+    order: 2;                                  /* Show AFTER floor plan */
+    padding-bottom: 18mm;                      /* Space for footer */
+}
+
+/* ============================================
+   RIGHT COLUMN - Floor Plan (SHOWS FIRST)
+   ============================================
+   FRONTEND: Contains the floor plan image
+   HTML CLASS: .column-right
+   ORDER: 1 (displays ABOVE tables)
+
+   In portrait, the floor plan appears at the TOP of the content,
+   above all the data tables.
+*/
+.template-portrait .column-right {
+    width: 100%;                               /* Full width */
+    order: 1;                                  /* Show BEFORE tables */
+    max-height: 100mm;                         /* Limit height to leave room for tables */
+    margin-bottom: 15px;
+}
+
+/* ============================================
+   FLOOR PLAN IMAGE
+   ============================================
+   FRONTEND: The uploaded floor plan image
+   HTML ID: #floorPlanImg
+
+   Limited to 90mm height to ensure tables fit below.
+*/
+.template-portrait #floorPlanImg {
+    max-height: 90mm;                          /* Shorter than landscape */
+    max-width: 100%;
+}
+
+/* ============================================
+   DATA TABLES STYLING
+   ============================================
+   FRONTEND: Property Details, Financial Breakdown tables
+   HTML CLASS: .data-table
+
+   Larger fonts than landscape (more vertical space available).
+*/
+.template-portrait .data-table {
+    font-size: 0.6875rem;                      /* 11px - larger than landscape 10px */
+}
+
+/* Table section titles (e.g., "PROPERTY DETAILS") */
+.template-portrait .table-title {
+    font-size: 13px;                           /* Larger titles */
+    margin-bottom: 10px;
+}
+
+/* Table cell padding */
+.template-portrait .data-table td {
+    padding: 4px 0;                            /* More padding than landscape (2px) */
+}
+
+/* ============================================
+   PAYMENT PLAN TABLE
+   ============================================
+   FRONTEND: Payment milestones table (Off-Plan only)
+   HTML CLASS: .payment-plan-table
+   HTML ID: #previewPaymentPlanTable
+*/
+.template-portrait .payment-plan-table {
+    margin-top: 15px;
+}
+
+/* ============================================
+   FOOTER AREA (Project Name & Sale Offer)
+   ============================================
+   FRONTEND: Project name and "SALE OFFER" in bottom-right
+   HTML CLASS: .footer-area
+   HTML IDs: #disp_project_footer (project name)
+
+   Project name from: Sidebar → Project Name input (id="input-project-name")
+*/
+.template-portrait .footer-area {
+    bottom: 12mm;
+    right: 15mm;
+}
+
+/* Project Name (e.g., "REEM ELEVEN") */
+.template-portrait .footer-proj {
+    font-size: 16px;                           /* Smaller than landscape (18px) */
+}
+
+/* "SALE OFFER" subtitle */
+.template-portrait .footer-sub {
+    font-size: 0.6875rem;                      /* 11px */
+}
+
+/* ============================================
+   FOOTNOTE / DISCLAIMER
+   ============================================
+   FRONTEND: Small disclaimer text at bottom of tables
+   HTML CLASS: .footnote
+*/
+.template-portrait .footnote {
+    max-width: 100%;                           /* Full width in portrait */
+    margin-top: 20px;
+    font-size: 8px;
+}
+
+/* ============================================
+   CREATED BY FOOTER (Agent Credit Line)
+   ============================================
+   FRONTEND: Small centered text at very bottom (e.g., "Created by John Doe")
+   HTML CLASS: .created-by-footer
+   HTML ID: #createdByText
+
+   Set via: Settings modal → Branding tab → Created By field
+*/
+.template-portrait .created-by-footer {
+    position: absolute;
+    bottom: 4mm;
+    left: 0;
+    right: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 7px;                            /* Smaller than landscape (9px) */
+    background: white;
+}
