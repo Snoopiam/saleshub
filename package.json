@@ -4,9 +4,9 @@
   "description": "Professional real estate sales offer document generator for UAE properties",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "nodemon backend/server.js",
+    "dev:backend": "nodemon server.js",
     "dev:frontend": "npx http-server -p 8000 -c-1",
-    "start": "node backend/server.js",
+    "start": "node server.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint js/ backend/src/"
