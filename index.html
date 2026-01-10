@@ -1,180 +1,1163 @@
-diff --git a/index.html b/index.html
-index 6d280863590cdc621093b5a8b7e0253d4808cb97..3aa91c97741df4ee4b19888b78d7b5ae60941b58 100644
---- a/index.html
-+++ b/index.html
-@@ -44,51 +44,51 @@ ACCESSIBILITY:
-   - Keyboard navigation support
-   - Screen reader friendly
-   - Skip navigation link
-   - Focus management
+<!--
+================================================================================
+SALESHUB - Main HTML File
+================================================================================
+PURPOSE: Real estate sales offer document generator for UAE properties.
+         Creates professional A4 documents with property details, financial
+         breakdown, floor plans, and payment plans.
 
- ================================================================================
- -->
- <!DOCTYPE html>
- <html lang="en">
- <head>
-     <!-- ====================================================================
-          META TAGS & SECURITY
-          ==================================================================== -->
-     <meta charset="UTF-8">
-     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+LAYOUT: Two-panel design
+  - LEFT PANEL (#inputPanel): Form inputs for property data entry (380px fixed width)
+  - RIGHT PANEL (#previewArea): Live A4 document preview (fills remaining space)
 
-     <!-- Content Security Policy - Controls which resources can be loaded -->
-     <meta http-equiv="Content-Security-Policy" content="
-         default-src 'self';
-         script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
-         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
-         font-src 'self' https://fonts.gstatic.com;
-         img-src 'self' data: blob:;
-         connect-src 'self' https://generativelanguage.googleapis.com https://cdnjs.cloudflare.com;
-     ">
--    <title>Sales Offer Generator</title>
-+    <title>SalesHUB</title>
+FEATURES:
+  - Live preview with instant updates (JavaScript updates preview on input)
+  - Multiple templates (Landscape, Portrait, Minimal)
+  - Excel import and JSON export
+  - Automatic calculations (totals, percentages, fees)
+  - Drag-and-drop payment plan rows
+  - localStorage persistence (auto-save)
+  - PDF export (html2pdf library)
+  - Print optimization (print.css)
 
-     <!-- ====================================================================
-          EXTERNAL JAVASCRIPT LIBRARIES
-          - All loaded with SRI (Subresource Integrity) hashes for security
-          - 'defer' attribute ensures scripts load after HTML parsing
-          ==================================================================== -->
+PROPERTY TYPES SUPPORTED:
+  - Off-Plan Resale: Properties still under construction (with payment plans)
+  - Ready Property: Completed properties (with occupancy status)
 
-     <!-- Tailwind CSS - Utility-first CSS framework (used for utility classes) -->
-     <script src="https://cdn.tailwindcss.com"></script>
+UNIT TYPES SUPPORTED:
+  - Standard (Apartments): Internal + Balcony areas
+  - Villa/Townhouse: Internal + Terrace + BUA + GFA + Plot Size
+  - Plot: Plot Size + Allowed Build Area
 
-     <!-- SheetJS (xlsx) - Excel file parsing for Import Excel feature -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
-             crossorigin="anonymous"
-             referrerpolicy="no-referrer"></script>
+TECHNOLOGIES:
+  - Vanilla JavaScript ES6 modules (no frameworks)
+  - CSS Custom Properties (CSS variables for theming)
+  - localStorage for data persistence
+  - SheetJS for Excel import/export
+  - html2pdf.js for PDF generation
+  - SortableJS for drag-and-drop
 
-     <!-- html2pdf.js - PDF export functionality (Print/PDF button) -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.12.1/html2pdf.bundle.min.js"
-             integrity="sha512-D25Z8/1q2z65ZpJ3NzY6XiPZfwjhbv34OTQHDIZd+KPK+uWCovGt+fMkSzW8ArzCMFUgZt6Cdu7qoXNuy6a2GA=="
-             crossorigin="anonymous"
-             referrerpolicy="no-referrer"
-             defer></script>
+ACCESSIBILITY:
+  - ARIA labels and landmarks
+  - Keyboard navigation support
+  - Screen reader friendly
+  - Skip navigation link
+  - Focus management
 
-     <!-- jsPDF - Editable PDF generation -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-             crossorigin="anonymous"
-@@ -144,58 +144,51 @@ ACCESSIBILITY:
-          - #inputPanel (aside): 380px fixed width, left side, scrollable
-          - #previewArea (main): Fills remaining space, right side
-          ======================================================================== -->
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ====================================================================
+         META TAGS & SECURITY
+         ==================================================================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-     <!-- Skip Navigation Link for Accessibility (keyboard users) -->
-     <a href="#inputPanel" class="skip-link">Skip to main content</a>
+    <!-- Content Security Policy - Controls which resources can be loaded -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: blob:;
+        connect-src 'self' http://localhost:* https://cdnjs.cloudflare.com;
+    ">
+    <title>SalesHUB</title>
 
-     <!-- ========================================================================
-          LEFT PANEL: INPUT FORM (#inputPanel)
-          ========================================================================
-          Contains all form fields for entering property data.
-          Sections:
-          1. Header (title + template selector)
-          2. Import buttons (Excel, JSON, AI Import)
-          3. Property Category toggle (Off-Plan / Ready)
-          4. Property Details (project name, unit info, areas)
-          5. Financial Breakdown (prices, fees, calculations)
-          6. Ready Property section (status, occupancy - shown for Ready only)
-          7. Payment Plan table (Off-Plan only)
-          8. Floor Plan upload
-          9. Action buttons (Settings, Export, Save, Clear, Print)
-          ======================================================================== -->
-     <aside id="inputPanel" role="complementary" aria-label="Property information form">
-         <div class="panel-header">
-             <div class="panel-header-row">
--                <h1 class="app-title">Sales Offer Generator</h1>
--                <div class="beta-toggle-container" id="betaToggleContainer">
--                    <label class="beta-toggle">
--                        <input type="checkbox" id="betaToggle">
--                        <span class="beta-slider"></span>
--                        <span class="beta-label">BETA</span>
--                    </label>
--                </div>
-+                <h1 class="app-title">SalesHUB</h1>
-             </div>
-             <div class="template-selector">
-                 <label for="templateSelect" class="visually-hidden">Document template layout</label>
-                 <select id="templateSelect" class="input-field" aria-label="Select document template layout">
-                     <option value="landscape">Landscape</option>
-                     <option value="portrait">Portrait</option>
-                     <option value="minimal">Minimal</option>
-                 </select>
-             </div>
-         </div>
+    <!-- ====================================================================
+         EXTERNAL JAVASCRIPT LIBRARIES
+         - All loaded with SRI (Subresource Integrity) hashes for security
+         - 'defer' attribute ensures scripts load after HTML parsing
+         ==================================================================== -->
 
-         <!-- ====================================================================
-              IMPORT SECTION - File Upload Buttons
-              ====================================================================
-              Three import methods:
-              1. Import Excel: Parse Excel (.xlsx, .xls) files with property data
-              2. Import JSON: Load saved state from exported JSON files
-              3. AI Import: AI-powered document parser (extracts data from PDFs/images)
+    <!-- SheetJS (xlsx) - Excel file parsing for Import Excel feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
 
-              TECHNICAL:
-              - Hidden file inputs triggered by clicking labels
-              - accept attribute limits file types
-              - SheetJS handles Excel parsing
-              - Google Gemini API handles AI parsing (requires API key)
-              ==================================================================== -->
-@@ -740,50 +733,62 @@ ACCESSIBILITY:
-         </div>
+    <!-- html2pdf.js - PDF export functionality (Print/PDF button) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.12.1/html2pdf.bundle.min.js"
+            integrity="sha512-D25Z8/1q2z65ZpJ3NzY6XiPZfwjhbv34OTQHDIZd+KPK+uWCovGt+fMkSzW8ArzCMFUgZt6Cdu7qoXNuy6a2GA=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+            defer></script>
 
-         <hr class="section-divider">
+    <!-- SortableJS - Drag-and-drop reordering for Payment Plan rows -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"
+            integrity="sha512-csIng5zcB+XpulRUa+ev1zKo7zRNGpEaVfNB9On1no9KYTEY/rLGAEEpvgdw6nim1WdTuihZY1eqZ31K7/fZjw=="
+            crossorigin="anonymous"
+            defer></script>
 
-         <!-- Floor Plan Upload -->
-         <div class="input-group">
-             <label class="input-label" for="floorplan_upload">Floor Plan Image</label>
-             <label class="file-upload-btn" tabindex="0" role="button" aria-label="Upload floor plan image">
-                 <span id="floorPlanFileName">Choose file...</span>
-                 <input type="file" id="floorplan_upload" accept="image/png,image/jpeg,image/jpg,image/webp" hidden aria-label="Select floor plan image file">
-             </label>
-             <div id="floorPlanError" role="alert" aria-live="assertive" class="field-error hidden"></div>
-         </div>
+    <!-- ====================================================================
+         PERFORMANCE OPTIMIZATION - Preconnect to external domains
+         ==================================================================== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
-         <hr class="section-divider">
+    <!-- Google Fonts - Montserrat (primary font for the app) -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
 
-         <!-- Action Buttons -->
-         <div class="action-buttons">
-             <button id="settingsBtn" class="btn btn-secondary" type="button" aria-label="Open settings and branding options">
-                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                     <circle cx="12" cy="12" r="3"/>
-                 </svg>
-                 <span class="visually-hidden">Settings</span>
-             </button>
-+            <button id="exportEditableBtn" class="btn btn-secondary" type="button" aria-label="Export editable PDF">
-+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/>
-+                </svg>
-+                <span class="visually-hidden">Export Editable PDF</span>
-+            </button>
-+            <button id="exportHybridBtn" class="btn btn-secondary" type="button" aria-label="Export hybrid PDFs">
-+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-+                </svg>
-+                <span class="visually-hidden">Export Hybrid PDFs</span>
-+            </button>
-             <button id="exportBtn" class="btn btn-secondary" type="button" aria-label="Open export options">
-                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                 </svg>
-                 <span class="visually-hidden">Export</span>
-             </button>
-             <button id="saveTemplateBtn" class="btn btn-secondary" type="button" aria-label="Save current offer as template">
-                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                 </svg>
-                 <span class="visually-hidden">Save Template</span>
-             </button>
-         </div>
+    <!-- ====================================================================
+         APP STYLESHEETS
+         ==================================================================== -->
+    <!-- Tailwind CSS - Compiled utility classes -->
+    <link rel="stylesheet" href="css/tailwind.css">
 
-         <div class="action-buttons mt-3">
-             <button id="clearAllBtn" class="btn btn-danger flex-1" type="button">Clear All</button>
-             <button id="printBtn" class="btn btn-primary flex-1" type="button">Print / PDF</button>
-         </div>
-     </aside>
+    <!-- main.css: Left panel (input form) styles, buttons, modals -->
+    <link rel="stylesheet" href="css/main.css">
 
-     <!-- ========================================================================
-          RIGHT PANEL: DOCUMENT PREVIEW (#previewArea)
-          ========================================================================
-          Shows a live A4-sized preview of the sales offer document.
-          Updates in real-time as user types in the input panel.
+    <!-- preview.css: Right panel (A4 document preview) styles -->
+    <link rel="stylesheet" href="css/preview.css">
+
+    <!-- beta.css: Beta/experimental features (date picker, etc.) -->
+    <link rel="stylesheet" href="css/beta.css">
+
+    <!-- print.css: Print-specific styles (applied only when printing) -->
+    <link rel="stylesheet" href="css/print.css" media="print">
+
+    <!-- Template stylesheet - Dynamically changed based on template selection -->
+    <link rel="stylesheet" href="css/templates/landscape.css" id="templateStylesheet">
+</head>
+<body>
+    <!-- ========================================================================
+         BODY STRUCTURE
+         ========================================================================
+         Layout: Flexbox with two panels side by side
+         - #inputPanel (aside): 380px fixed width, left side, scrollable
+         - #previewArea (main): Fills remaining space, right side
+         ======================================================================== -->
+
+    <!-- Skip Navigation Link for Accessibility (keyboard users) -->
+    <a href="#inputPanel" class="skip-link">Skip to main content</a>
+
+    <!-- ========================================================================
+         LEFT PANEL: INPUT FORM (#inputPanel)
+         ========================================================================
+         Contains all form fields for entering property data.
+         Sections:
+         1. Header (title + template selector)
+         2. Import button (Excel)
+         3. Property Category toggle (Off-Plan / Ready)
+         4. Property Details (project name, unit info, areas)
+         5. Financial Breakdown (prices, fees, calculations)
+         6. Ready Property section (status, occupancy - shown for Ready only)
+         7. Payment Plan table (Off-Plan only)
+         8. Floor Plan upload
+         9. Action buttons (Settings, Export, Save, Clear, Print)
+         ======================================================================== -->
+    <aside id="inputPanel" role="complementary" aria-label="Property information form">
+        <div class="panel-header">
+            <div class="panel-header-row">
+                <h1 class="app-title">SalesHUB</h1>
+            </div>
+            <div class="template-selector">
+                <label for="templateSelect" class="visually-hidden">Document template layout</label>
+                <select id="templateSelect" class="input-field" aria-label="Select document template layout">
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                    <option value="minimal">Minimal</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ====================================================================
+             IMPORT SECTION - File Upload Button
+             ====================================================================
+             Import Excel: Parse Excel (.xlsx, .xls) files with property data
+
+             TECHNICAL:
+             - Hidden file input triggered by clicking label
+             - accept attribute limits file types
+             - SheetJS handles Excel parsing
+             ==================================================================== -->
+        <!-- Import Section -->
+        <div class="section-block">
+            <div class="import-buttons">
+                <!-- Excel Import Button -->
+                <label class="btn btn-secondary btn-small">
+                    <span>Import Excel</span>
+                    <!-- Hidden file input (triggered by label click) -->
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls" hidden aria-label="Import Excel file with property data">
+                </label>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Property Category Section -->
+        <div class="section-block">
+            <label class="input-label">Property Category</label>
+            <div class="category-toggle" role="radiogroup" aria-label="Property category selection">
+                <button type="button" class="category-btn active" data-category="offplan" aria-pressed="true">
+                    Off-Plan Resale
+                </button>
+                <button type="button" class="category-btn" data-category="ready" aria-pressed="false">
+                    Ready Property
+                </button>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Property Details Section -->
+        <h2 class="section-title">Property Details</h2>
+
+        <div class="input-group">
+            <label class="input-label" for="input-project-name">Project Name</label>
+            <input type="text" id="input-project-name" class="input-field" data-field="projectName" placeholder="e.g., REEM EIGHT" aria-required="true">
+        </div>
+
+        <fieldset class="grid-2 fieldset-reset">
+            <legend class="visually-hidden">Unit identification</legend>
+            <div class="input-group">
+                <label class="input-label" for="input-unit-number">Unit No</label>
+                <input type="text" id="input-unit-number" class="input-field" data-field="unitNo" placeholder="e.g., 05 Layout">
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="input-unit-type">Unit Type</label>
+                <input type="text" id="input-unit-type" class="input-field" data-field="unitType" placeholder="e.g., Apartment">
+            </div>
+        </fieldset>
+
+        <fieldset class="grid-2 fieldset-reset">
+            <legend class="visually-hidden">Unit details</legend>
+            <div class="input-group">
+                <label class="input-label" for="select-unit-model">Unit Model</label>
+                <select id="select-unit-model" class="input-field" data-field="bedrooms">
+                    <option value="">Select Unit Model</option>
+                    <option value="Studio">Studio</option>
+                    <option value="1 Bedroom">1 Bedroom</option>
+                    <option value="1 Bedroom + Maid">1 Bedroom + Maid</option>
+                    <option value="2 Bedroom">2 Bedroom</option>
+                    <option value="2 Bedroom + Maid">2 Bedroom + Maid</option>
+                    <option value="2 Bedroom + Store & Laundry">2 Bedroom + Store & Laundry</option>
+                    <option value="3 Bedroom">3 Bedroom</option>
+                    <option value="3 Bedroom + Maid">3 Bedroom + Maid</option>
+                    <option value="4 Bedroom">4 Bedroom</option>
+                    <option value="4 Bedroom + Maid">4 Bedroom + Maid</option>
+                    <option value="5 Bedroom">5 Bedroom</option>
+                    <option value="5 Bedroom + Maid">5 Bedroom + Maid</option>
+                    <option value="6 Bedroom">6 Bedroom</option>
+                    <option value="7 Bedroom">7 Bedroom</option>
+                    <option value="Penthouse">Penthouse</option>
+                    <option value="Duplex">Duplex</option>
+                    <option value="Townhouse">Townhouse</option>
+                    <option value="Villa">Villa</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="select-views">Views</label>
+                <select id="select-views" class="input-field" data-field="views">
+                    <option value="">Select Views</option>
+                    <option value="Sea View">Sea View</option>
+                    <option value="Partial Sea View">Partial Sea View</option>
+                    <option value="Marina View">Marina View</option>
+                    <option value="Garden View">Garden View</option>
+                    <option value="Pool View">Pool View</option>
+                    <option value="City View">City View</option>
+                    <option value="Park View">Park View</option>
+                    <option value="Golf Course View">Golf Course View</option>
+                    <option value="Mangrove View">Mangrove View</option>
+                    <option value="Lake View">Lake View</option>
+                    <option value="Boulevard View">Boulevard View</option>
+                    <option value="Community View">Community View</option>
+                    <option value="Landmark View">Landmark View</option>
+                    <option value="City Skyline View">City Skyline View</option>
+                    <option value="Canal View">Canal View</option>
+                    <option value="Courtyard View">Courtyard View</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <!-- Standard Area Fields (Apartment, etc.) -->
+        <fieldset class="grid-2 fieldset-reset" id="standardAreaGroup">
+            <legend class="visually-hidden">Standard unit area measurements</legend>
+            <div class="input-group">
+                <label class="input-label" for="input-internal-area">Internal Area</label>
+                <input type="number" id="input-internal-area" class="input-field" data-field="internalArea" placeholder="e.g., 918.38" step="0.01">
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="input-balcony-area">Balcony Area</label>
+                <input type="number" id="input-balcony-area" class="input-field" data-field="balconyArea" placeholder="e.g., 173.94" step="0.01">
+            </div>
+        </fieldset>
+
+        <!-- Villa/Townhouse Area Fields -->
+        <div id="villaAreaGroup" style="display: none;">
+            <div class="grid-2">
+                <div class="input-group">
+                    <label class="input-label">Internal Area</label>
+                    <input type="number" id="input-villa-internal" class="input-field" data-field="villaInternal" placeholder="e.g., 2500" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Balcony/Terrace (Sq.Ft)</label>
+                    <input type="number" id="input-villa-terrace" class="input-field" data-field="villaTerrace" placeholder="e.g., 500" step="0.01">
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="input-group">
+                    <label class="input-label">BUA - Built-Up Area (Sq.Ft)</label>
+                    <input type="text" id="input-built-up-area" class="input-field calculated" data-field="builtUpArea" placeholder="Auto: Internal + Terrace" readonly>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">GFA - Gross Floor Area (Sq.Ft)</label>
+                    <input type="number" id="input-gross-floor-area" class="input-field" data-field="grossFloorArea" placeholder="e.g., 3500" step="0.01">
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="input-group">
+                    <label class="input-label">Total Area</label>
+                    <input type="number" id="input-villa-total" class="input-field" data-field="villaTotal" placeholder="e.g., 4000" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Plot Size (Sq.Ft)</label>
+                    <input type="number" id="input-plot-size" class="input-field" data-field="plotSize" placeholder="e.g., 8000" step="0.01">
+                </div>
+            </div>
+        </div>
+
+        <!-- Plot Area Fields -->
+        <div id="plotAreaGroup" style="display: none;">
+            <div class="grid-2">
+                <div class="input-group">
+                    <label class="input-label" for="input-plot-size-only">Plot Size (Sq.Ft)</label>
+                    <input type="number" id="input-plot-size-only" class="input-field" data-field="plotSizeOnly" placeholder="e.g., 10000" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Allowed Build Area (Sq.Ft)</label>
+                    <input type="number" id="input-allowed-build" class="input-field" data-field="allowedBuild" placeholder="e.g., 6000" step="0.01">
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Area for Standard Units -->
+        <div class="input-group" id="totalAreaGroup">
+            <label class="input-label" for="input-total-area">Total Area</label>
+            <div class="input-with-lock">
+                <input type="text" id="input-total-area" class="input-field calculated" data-field="totalArea" placeholder="Auto-calculated" readonly aria-describedby="input-total-area_desc">
+                <span id="input-total-area_desc" class="visually-hidden">Auto-calculated from internal and balcony area</span>
+                <button class="lock-btn" data-target="input-total-area" type="button" aria-label="Toggle automatic calculation for total area" aria-pressed="false">
+                    <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Financial Breakdown Section -->
+        <h2 class="section-title">Financial Breakdown</h2>
+
+        <!-- Show Original Price Toggle (for Ready Property only) -->
+        <div id="showOriginalPriceToggle" class="input-group" style="display: none;">
+            <label class="input-label">Show Original Price</label>
+            <div class="toggle-switch-group">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="checkbox-show-original" data-field="showOriginalPrice">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label" id="showOriginalLabel">No</span>
+            </div>
+        </div>
+
+        <fieldset class="grid-2 fieldset-reset" id="priceFieldsGroup">
+            <legend class="visually-hidden">Price information</legend>
+            <div class="input-group" id="originalPriceGroup">
+                <label class="input-label" for="input-original-price">Original Price</label>
+                <input type="number" id="input-original-price" class="input-field" data-field="originalPrice" placeholder="e.g., 2118940" aria-required="true">
+            </div>
+            <div class="input-group">
+                <label class="input-label" for="input-selling-price">Selling Price</label>
+                <input type="number" id="input-selling-price" class="input-field" data-field="sellingPrice" placeholder="e.g., 2500000" aria-required="true">
+            </div>
+        </fieldset>
+
+        <div class="calculated-fields">
+            <!-- Off-Plan Resale Only Fields -->
+            <div id="offplanFieldsGroup">
+                <!-- Resale Clause % -->
+                <div class="input-group">
+                    <label class="input-label" for="input-resale-clause">Resale Clause %</label>
+                    <input type="number" id="input-resale-clause" class="input-field" data-field="resaleClausePercent" placeholder="e.g., 40" step="1" min="0" max="100">
+                </div>
+
+                <!-- Amount Paid to Developer -->
+                <fieldset class="grid-2 fieldset-reset">
+                    <legend class="visually-hidden">Amount paid to developer</legend>
+                    <div class="input-group">
+                        <label class="input-label" for="input-amount-paid-percent">Amount Paid %</label>
+                        <input type="number" id="input-amount-paid-percent" class="input-field" data-field="amountPaidPercent" placeholder="e.g., 20" step="0.01" min="0" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label" for="input-amount-paid">Amount Paid (AED)</label>
+                        <input type="number" id="input-amount-paid" class="input-field" data-field="amountPaid" placeholder="e.g., 500000">
+                    </div>
+                </fieldset>
+
+                <div class="input-group">
+                    <label class="input-label" for="input-refund-amount">Refund (Amount Paid to Developer)</label>
+                    <div class="input-with-lock">
+                        <input type="number" id="input-refund-amount" class="input-field calculated" data-field="refund" placeholder="Auto-calculated">
+                        <button class="lock-btn" data-target="input-refund-amount" type="button" aria-label="Toggle automatic calculation for refund" aria-pressed="false">
+                            <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0110 0v4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label" for="input-balance-resale">Balance Resale Clause</label>
+                    <div class="input-with-lock">
+                        <input type="number" id="input-balance-resale" class="input-field calculated" data-field="balanceResale" placeholder="Auto-calculated">
+                        <button class="lock-btn" data-target="input-balance-resale" type="button" aria-label="Toggle automatic calculation for balance" aria-pressed="false">
+                            <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0110 0v4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label" for="input-premium-amount">Premium (Sell - Original)</label>
+                    <div class="input-with-lock">
+                        <input type="number" id="input-premium-amount" class="input-field calculated" data-field="premium" placeholder="Auto-calculated">
+                        <button class="lock-btn" data-target="input-premium-amount" type="button" aria-label="Toggle automatic calculation for premium" aria-pressed="false">
+                            <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0110 0v4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <fieldset class="grid-2 fieldset-reset">
+                <legend class="visually-hidden">Fees</legend>
+                <div class="input-group">
+                    <label class="input-label" for="input-admin-fees">Admin Fees (SAAS)</label>
+                    <input type="number" id="input-admin-fees" class="input-field" data-field="adminFees" placeholder="e.g., 5250">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" for="input-adgm-transfer">ADGM Reg. Fee (2% of Original Price)</label>
+                    <div class="input-with-lock">
+                        <input type="number" id="input-adgm-transfer" class="input-field calculated" data-field="adgmTransfer" placeholder="Auto-calculated">
+                        <button class="lock-btn" data-target="input-adgm-transfer" type="button" aria-label="Toggle automatic calculation for ADGM" aria-pressed="false">
+                            <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0110 0v4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label" for="input-adgm-termination-fee">ADGM Termination Fee</label>
+                    <input type="number" id="input-adgm-termination-fee" class="input-field" data-field="adgmTermination" placeholder="e.g., 505">
+                </div>
+                <div class="input-group">
+                    <label class="input-label" for="input-adgm-electronic-fee">ADGM Electronic Service Fee</label>
+                    <input type="number" id="input-adgm-electronic-fee" class="input-field" data-field="adgmElectronic" placeholder="e.g., 525">
+                </div>
+            </fieldset>
+
+            <div class="input-group">
+                <label class="input-label" for="input-agency-fees">Agency Fees (2%+VAT)</label>
+                <div class="input-with-lock">
+                    <input type="number" id="input-agency-fees" class="input-field calculated" data-field="agencyFees" placeholder="Auto-calculated">
+                    <button class="lock-btn" data-target="input-agency-fees" type="button" aria-label="Toggle automatic calculation for agency fees" aria-pressed="false">
+                        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="total-display" role="status" aria-live="polite">
+            <span class="total-label">Total Initial Payment</span>
+            <span class="total-value" id="display-total-payment" aria-atomic="true">-</span>
+        </div>
+
+        <!-- Ready Property Section (hidden by default) -->
+        <div id="readyPropertySection" style="display: none;">
+            <div class="section-header-with-toggle">
+                <h2 class="section-title">Property Status</h2>
+                <div class="toggle-switch-group small">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="checkbox-show-property-status" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label" id="showPropertyStatusLabel">Show</span>
+                </div>
+            </div>
+
+            <!-- Project & Unit Handover Dates -->
+            <fieldset class="grid-2 fieldset-reset">
+                <legend class="visually-hidden">Handover dates</legend>
+                <div class="input-group">
+                    <div class="label-with-toggle">
+                        <label class="input-label" for="select-project-handover-type">Project Completion</label>
+                        <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                            <input type="checkbox" class="row-toggle" data-target="disp_row_projecthandover" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="date-format-group">
+                        <select id="select-project-handover-type" class="input-field input-field-small" data-field="projectHandoverType">
+                            <option value="month">Month</option>
+                            <option value="quarter">Quarter</option>
+                        </select>
+                        <select id="select-project-handover-period" class="input-field input-field-small" data-field="projectHandoverPeriod">
+                            <option value="">--</option>
+                            <option value="1">Jan</option>
+                            <option value="2">Feb</option>
+                            <option value="3">Mar</option>
+                            <option value="4">Apr</option>
+                            <option value="5">May</option>
+                            <option value="6">Jun</option>
+                            <option value="7">Jul</option>
+                            <option value="8">Aug</option>
+                            <option value="9">Sep</option>
+                            <option value="10">Oct</option>
+                            <option value="11">Nov</option>
+                            <option value="12">Dec</option>
+                        </select>
+                        <input type="number" id="input-project-handover-year" class="input-field input-field-small" data-field="projectHandoverYear" placeholder="Year" min="2000" max="2050">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <div class="label-with-toggle">
+                        <label class="input-label" for="select-unit-handover-type">Unit Received</label>
+                        <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                            <input type="checkbox" class="row-toggle" data-target="disp_row_unithandover" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="date-format-group">
+                        <select id="select-unit-handover-type" class="input-field input-field-small" data-field="unitHandoverType">
+                            <option value="month">Month</option>
+                            <option value="quarter">Quarter</option>
+                        </select>
+                        <select id="select-unit-handover-period" class="input-field input-field-small" data-field="unitHandoverPeriod">
+                            <option value="">--</option>
+                            <option value="1">Jan</option>
+                            <option value="2">Feb</option>
+                            <option value="3">Mar</option>
+                            <option value="4">Apr</option>
+                            <option value="5">May</option>
+                            <option value="6">Jun</option>
+                            <option value="7">Jul</option>
+                            <option value="8">Aug</option>
+                            <option value="9">Sep</option>
+                            <option value="10">Oct</option>
+                            <option value="11">Nov</option>
+                            <option value="12">Dec</option>
+                        </select>
+                        <input type="number" id="input-unit-handover-year" class="input-field input-field-small" data-field="unitHandoverYear" placeholder="Year" min="2000" max="2050">
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Calculated Ages -->
+            <fieldset class="grid-2 fieldset-reset">
+                <legend class="visually-hidden">Calculated ages</legend>
+                <div class="input-group">
+                    <div class="label-with-toggle">
+                        <label class="input-label">Project Age</label>
+                        <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                            <input type="checkbox" class="row-toggle" data-target="disp_row_projectage" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <input type="text" id="display-project-age" class="input-field calculated" readonly placeholder="Auto-calculated">
+                </div>
+                <div class="input-group">
+                    <div class="label-with-toggle">
+                        <label class="input-label">Unit Ownership</label>
+                        <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                            <input type="checkbox" class="row-toggle" data-target="disp_row_unitownership" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <input type="text" id="display-unit-ownership" class="input-field calculated" readonly placeholder="Auto-calculated">
+                </div>
+            </fieldset>
+
+            <hr class="section-divider">
+
+            <div class="input-group">
+                <div class="label-with-toggle">
+                    <label class="input-label">Occupancy Status</label>
+                    <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                        <input type="checkbox" class="row-toggle" data-target="disp_row_occupancy" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="occupancy-toggle" role="radiogroup" aria-label="Occupancy status selection">
+                    <button type="button" class="occupancy-btn active" data-occupancy="owner" aria-pressed="true">
+                        Owner Occupied
+                    </button>
+                    <button type="button" class="occupancy-btn" data-occupancy="vacant" aria-pressed="false">
+                        Vacant
+                    </button>
+                    <button type="button" class="occupancy-btn" data-occupancy="leased" aria-pressed="false">
+                        Leased
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lease Details (shown when Leased is selected) -->
+            <div id="leaseDetailsSection" style="display: none;">
+                <fieldset class="grid-2 fieldset-reset">
+                    <legend class="visually-hidden">Lease details</legend>
+                    <div class="input-group">
+                        <div class="label-with-toggle">
+                            <label class="input-label" for="input-current-rent">Current Rent (AED/year)</label>
+                            <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                                <input type="checkbox" class="row-toggle" data-target="disp_row_currentrent" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <input type="number" id="input-current-rent" class="input-field" data-field="currentRent" placeholder="e.g., 85000">
+                    </div>
+                    <div class="input-group">
+                        <div class="label-with-toggle">
+                            <label class="input-label" for="input-lease-until">Lease Until</label>
+                            <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                                <input type="checkbox" class="row-toggle" data-target="disp_row_leaseuntil" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <input type="date" id="input-lease-until" class="input-field" data-field="leaseUntil">
+                    </div>
+                </fieldset>
+
+                <div class="input-group">
+                    <div class="label-with-toggle">
+                        <label class="input-label">Rent Refund (Pro-rata)</label>
+                        <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                            <input type="checkbox" class="row-toggle" data-target="disp_row_rentrefund" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-switch-group">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="checkbox-rent-refund" data-field="rentRefund">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label" id="rentRefundLabel">No</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="label-with-toggle">
+                    <label class="input-label" for="input-service-charge">Service Charge (AED/year)</label>
+                    <label class="toggle-switch extra-small" title="Show/Hide in preview">
+                        <input type="checkbox" class="row-toggle" data-target="disp_row_servicecharge" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <input type="number" id="input-service-charge" class="input-field" data-field="serviceCharge" placeholder="e.g., 15000">
+            </div>
+
+            <hr class="section-divider">
+        </div>
+
+        <!-- Payment Plan Section (Off-Plan only) -->
+        <div id="paymentPlanSection">
+            <h2 class="section-title">Payment Plan</h2>
+        </div>
+
+        <div id="paymentPlanContainer">
+            <table class="payment-table" id="paymentPlanTable" role="table" aria-label="Payment plan editor">
+                <caption class="visually-hidden">Payment schedule with editable dates, percentages, and amounts. Rows can be reordered by dragging or using Alt+Arrow keys.</caption>
+                <thead>
+                    <tr role="row">
+                        <th scope="col" role="columnheader">Date</th>
+                        <th scope="col" role="columnheader">%</th>
+                        <th scope="col" role="columnheader">Amount</th>
+                        <th scope="col" role="columnheader"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody id="paymentPlanBody" role="rowgroup">
+                    <!-- Rows added dynamically -->
+                </tbody>
+            </table>
+            <button id="addPaymentRowBtn" class="btn btn-secondary btn-small mt-2" type="button">+ Add Row</button>
+            <div class="payment-summary">
+                <span>Total: <strong id="paymentPercentTotal">0%</strong></span>
+                <span class="validation-msg" id="paymentValidation" role="alert" aria-live="assertive"></span>
+            </div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Floor Plan Upload -->
+        <div class="input-group">
+            <label class="input-label" for="floorplan_upload">Floor Plan Image</label>
+            <label class="file-upload-btn" tabindex="0" role="button" aria-label="Upload floor plan image">
+                <span id="floorPlanFileName">Choose file...</span>
+                <input type="file" id="floorplan_upload" accept="image/png,image/jpeg,image/jpg,image/webp" hidden aria-label="Select floor plan image file">
+            </label>
+            <div id="floorPlanError" role="alert" aria-live="assertive" class="field-error hidden"></div>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button id="settingsBtn" class="btn btn-secondary" type="button" aria-label="Open settings and branding options">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="visually-hidden">Settings</span>
+            </button>
+            <button id="exportBtn" class="btn btn-secondary" type="button" aria-label="Open export options">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="visually-hidden">Export</span>
+            </button>
+            <button id="saveTemplateBtn" class="btn btn-secondary" type="button" aria-label="Save current offer as template">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                </svg>
+                <span class="visually-hidden">Save Template</span>
+            </button>
+        </div>
+
+        <div class="action-buttons mt-3">
+            <button id="clearAllBtn" class="btn btn-danger flex-1" type="button">Clear All</button>
+            <button id="export-pdf-backend" class="btn btn-primary flex-1" type="button">
+                <svg class="icon" viewBox="0 0 20 20" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;">
+                    <path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"/>
+                </svg>
+                Export PDF (HQ)
+            </button>
+            <button id="export-pdf-legacy" class="btn btn-secondary flex-1" type="button">
+                <svg class="icon" viewBox="0 0 20 20" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;">
+                    <path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"/>
+                </svg>
+                Legacy PDF
+            </button>
+        </div>
+    </aside>
+
+    <!-- ========================================================================
+         RIGHT PANEL: DOCUMENT PREVIEW (#previewArea)
+         ========================================================================
+         Shows a live A4-sized preview of the sales offer document.
+         Updates in real-time as user types in the input panel.
+
+         Document Structure (inside #a4Page):
+         - .header-bar: Colored bar at top (uses brand color)
+         - .logo-area: Company logo (top right)
+         - .document-header: "FLOOR PLANS" label + Unit Model title
+         - .content-row: Two-column layout
+             - .column-left: Property Details table + Financial Breakdown table
+             - .column-right: Floor plan image
+         - .footer-area: Project name + "SALE OFFER"
+         - .created-by-footer: Agent credit line
+
+         ID Naming Convention for display elements:
+         - disp_*: Display elements that show values (e.g., disp_orig = Original Price display)
+         - disp_row_*: Table rows that can be shown/hidden
+         - label_*: Customizable labels (changed via Settings modal)
+         ======================================================================== -->
+    <main id="previewArea" role="main" aria-label="Document preview">
+        <div id="a4Page" class="template-landscape">
+            <!-- Colored header bar (brand color from settings) -->
+            <div class="header-bar"></div>
+
+            <!-- Company logo (uploaded via Settings > Branding) -->
+            <div class="logo-area">
+                <img src="assets/logos/KP_blACK.png" alt="Company Logo" class="logo-img" id="logoImg">
+            </div>
+
+            <!-- Document title section -->
+            <div class="document-header">
+                <div class="main-title" id="disp_title">-</div>
+            </div>
+
+            <!-- Main content: Two-column layout -->
+            <div class="content-row">
+                <!-- Left Column: Data Tables -->
+                <div class="column-left">
+                    <!-- ================================================
+                         TABLE 1: PROPERTY DETAILS
+                         Shows: Unit, Areas (Project Name is in footer)
+                         ================================================ -->
+                    <table class="data-table">
+                        <caption class="table-title">Property Details</caption>
+                        <tbody>
+                            <tr>
+                                <td class="row-label">Unit no</td>
+                                <td class="row-value" id="display-unit-number">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label">Unit Type</td>
+                                <td class="row-value" id="disp_unit_type">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label">Views</td>
+                                <td class="row-value" id="disp_views">-</td>
+                            </tr>
+                            <!-- Standard Area Rows -->
+                            <tr id="disp_row_internal">
+                                <td class="row-label">Internal Area</td>
+                                <td class="row-value" id="disp_internal">-</td>
+                            </tr>
+                            <tr id="disp_row_balcony">
+                                <td class="row-label">Balcony Area</td>
+                                <td class="row-value" id="disp_balcony">-</td>
+                            </tr>
+                            <tr id="disp_row_area" class="total-row">
+                                <td class="row-label">Total Area</td>
+                                <td class="row-value row-value-bold" id="display-total-area">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table class="data-table">
+                        <caption class="table-title">Financial Breakdown</caption>
+                        <tbody>
+                            <tr id="disp_row_original_price">
+                                <td class="row-label">Original Price</td>
+                                <td class="row-value" id="disp_original_price">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label">Selling Price</td>
+                                <td class="row-value" id="disp_selling_price">-</td>
+                            </tr>
+                            <tr id="disp_divider_offplan">
+                                <td colspan="2" class="divider-row"></td>
+                            </tr>
+                            <!-- Off-Plan Resale Rows -->
+                            <tr id="disp_row_refund">
+                                <td class="row-label" id="label_refund_amount">Refund (Amount Paid to Developer)</td>
+                                <td class="row-value" id="disp_refund">-</td>
+                            </tr>
+                            <tr id="disp_row_balance_resale">
+                                <td class="row-label" id="label_balance_resale">Balance Resale Clause <span class="asterisk">*</span></td>
+                                <td class="row-value" id="disp_balance_resale">-</td>
+                            </tr>
+                            <tr id="disp_row_premium">
+                                <td class="row-label" id="label_premium_price">Premium (Selling Price - Original Price)</td>
+                                <td class="row-value" id="disp_premium">-</td>
+                            </tr>
+                            <!-- Common Fees -->
+                            <tr>
+                                <td class="row-label" id="label_admin_fees">Admin Fees (SAAS)</td>
+                                <td class="row-value" id="disp_admin_fees">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label" id="label_adgm_transfer">ADGM Reg. Fee (2% of Original Price)</td>
+                                <td class="row-value" id="disp_adgm_transfer">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label" id="label_adgm_termination">ADGM Termination Fee</td>
+                                <td class="row-value" id="disp_adgm_termination">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label" id="label_adgm_electronic">ADGM Electronic Service Fee</td>
+                                <td class="row-value" id="disp_adgm_electronic">-</td>
+                            </tr>
+                            <tr>
+                                <td class="row-label" id="label_agency_fees">Agency Fees (2% of Selling Price + Vat)</td>
+                                <td class="row-value" id="disp_agency_fees">-</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td class="row-label">Total Initial Payment</td>
+                                <td class="row-value" id="disp_total">-</td>
+                            </tr>
+                            <!-- Villa/Townhouse Area Rows (hidden by default) -->
+                            <tr id="disp_row_villa_internal" style="display: none;">
+                                <td class="row-label">Internal Area</td>
+                                <td class="row-value" id="disp_villa_internal">-</td>
+                            </tr>
+                            <tr id="disp_row_villa_terrace" style="display: none;">
+                                <td class="row-label">Balcony/Terrace (Sq.Ft)</td>
+                                <td class="row-value" id="disp_villa_terrace">-</td>
+                            </tr>
+                            <tr id="disp_row_built_up_area" style="display: none;">
+                                <td class="row-label">BUA - Built-Up Area (Sq.Ft)</td>
+                                <td class="row-value" id="disp_built_up_area">-</td>
+                            </tr>
+                            <tr id="disp_row_gross_floor_area" style="display: none;">
+                                <td class="row-label">GFA - Gross Floor Area (Sq.Ft)</td>
+                                <td class="row-value" id="disp_gross_floor_area">-</td>
+                            </tr>
+                            <tr id="disp_row_villa_total" class="total-row" style="display: none;">
+                                <td class="row-label">Total Area</td>
+                                <td class="row-value" id="disp_villa_total">-</td>
+                            </tr>
+                            <tr id="disp_row_plotsize" style="display: none;">
+                                <td class="row-label">Plot Size (Sq.Ft)</td>
+                                <td class="row-value" id="disp_plot_size">-</td>
+                            </tr>
+                            <!-- Plot Area Rows (hidden by default) -->
+                            <tr id="disp_row_plot_size" style="display: none;">
+                                <td class="row-label">Plot Size (Sq.Ft)</td>
+                                <td class="row-value" id="disp_plot_size_only">-</td>
+                            </tr>
+                            <tr id="disp_row_allowed_build" style="display: none;">
+                                <td class="row-label">Allowed Build Area (Sq.Ft)</td>
+                                <td class="row-value" id="disp_allowed_build">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Property Status Table (Ready Property only) -->
+                    <table class="data-table" id="propertyStatusTable" style="display: none;">
+                        <tbody>
+                            <tr id="disp_row_projecthandover">
+                                <td class="row-label">Project Completion</td>
+                                <td class="row-value" id="disp_projecthandover">-</td>
+                            </tr>
+                            <tr id="disp_row_projectage">
+                                <td class="row-label">Project Age</td>
+                                <td class="row-value" id="disp_projectage">-</td>
+                            </tr>
+                            <tr id="disp_row_unithandover">
+                                <td class="row-label">Unit Received</td>
+                                <td class="row-value" id="disp_unithandover">-</td>
+                            </tr>
+                            <tr id="disp_row_unitownership">
+                                <td class="row-label">Unit Ownership</td>
+                                <td class="row-value" id="disp_unitownership">-</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="divider-row"></td>
+                            </tr>
+                            <tr id="disp_row_occupancy">
+                                <td class="row-label">Status</td>
+                                <td class="row-value" id="disp_occupancy">-</td>
+                            </tr>
+                            <tr id="disp_row_currentrent" style="display: none;">
+                                <td class="row-label">Current Rent</td>
+                                <td class="row-value" id="disp_currentrent">-</td>
+                            </tr>
+                            <tr id="disp_row_leaseuntil" style="display: none;">
+                                <td class="row-label">Lease Until</td>
+                                <td class="row-value" id="disp_leaseuntil">-</td>
+                            </tr>
+                            <tr id="disp_row_rentrefund" style="display: none;">
+                                <td class="row-label">Rent Refund</td>
+                                <td class="row-value" id="disp_rentrefund">-</td>
+                            </tr>
+                            <tr id="disp_row_servicecharge">
+                                <td class="row-label">Service Charge</td>
+                                <td class="row-value" id="disp_servicecharge">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Payment Plan Table (Off-Plan only) -->
+                    <table class="data-table payment-plan-table" id="previewPaymentPlanTable">
+                        <caption class="table-title" id="paymentPlanTitle">Payment Plan</caption>
+                        <thead>
+                            <tr class="table-header-row">
+                                <th>Date Of Payment</th>
+                                <th>%</th>
+                                <th>Amount (AED)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment_plan_tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Right Column: Floor Plan -->
+                <div class="column-right">
+                    <div class="floorplan-frame">
+                        <img id="floorPlanImg" src="assets/logos/Asset%201@2x.png" alt="Floor Plan">
+                        <div id="imgPlaceholder" class="img-placeholder" style="display:none;">
+                            <p class="placeholder-title">FLOOR PLAN IMAGE</p>
+                            <p class="placeholder-sub">Upload from sidebar</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Bottom Right -->
+            <div class="footer-area">
+                <div class="footer-proj" id="disp_project_footer">-</div>
+                <div class="footer-sub">SALE OFFER</div>
+            </div>
+
+            <!-- Created By Footer -->
+            <div class="created-by-footer">
+                Created by Sanoop Syamalan - Associate Director - Kennedy Property Brokers LLC
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="settingsModalTitle">Settings & Branding</h2>
+                <button class="modal-close" type="button" aria-label="Close settings modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="branding">Branding</button>
+                    <button class="tab-btn" data-tab="labels">Field Labels</button>
+                </div>
+
+                <div class="tab-content active" id="tab-branding">
+                    <div class="input-group">
+                        <label class="input-label">Company Name</label>
+                        <input type="text" id="brandCompanyName" class="input-field" placeholder="Kennedy Property">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Primary Color</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="brandPrimaryColor" value="#62c6c1">
+                            <input type="text" id="brandPrimaryColorHex" class="input-field" value="#62c6c1" maxlength="7">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Logo Image</label>
+                        <label class="file-upload-btn">
+                            <span id="logoFileName">Choose file...</span>
+                            <input type="file" id="brandLogoUpload" accept="image/*" hidden>
+                        </label>
+                        <div id="logoPreview" class="logo-preview"></div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Footer Text</label>
+                        <input type="text" id="brandFooterText" class="input-field" placeholder="SALE OFFER">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-labels">
+                    <p class="text-sm text-gray-400 mb-4">Customize field labels displayed on the document.</p>
+                    <div class="input-group">
+                        <label class="input-label">Refund Label</label>
+                        <input type="text" id="labelRefund" class="input-field" value="Refund (Amount Paid to Developer)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Balance Label</label>
+                        <input type="text" id="labelBalance" class="input-field" value="Balance Resale Clause">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Premium Label</label>
+                        <input type="text" id="labelPremium" class="input-field" value="Premium (Selling Price - Original Price)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Admin Fees Label</label>
+                        <input type="text" id="labelAdmin" class="input-field" value="Admin Fees (SAAS)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">ADGM Label</label>
+                        <input type="text" id="labelAdgm" class="input-field" value="ADGM Reg. Fee (2% of Original Price)">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Agency Fees Label</label>
+                        <input type="text" id="labelAgency" class="input-field" value="Agency Fees (2% of Selling Price + Vat)">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="exportModalTitle">Export Options</h2>
+                <button class="modal-close" type="button" aria-label="Close export modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <label class="export-option">
+                        <input type="radio" name="exportFormat" value="pdf" checked>
+                        <span class="option-label">
+                            <strong>PDF Document</strong>
+                            <small>High-quality PDF matching live preview exactly</small>
+                        </span>
+                    </label>
+                    <label class="export-option">
+                        <input type="radio" name="exportFormat" value="png">
+                        <span class="option-label">
+                            <strong>PNG Image</strong>
+                            <small>High quality, transparent support</small>
+                        </span>
+                    </label>
+                    <label class="export-option">
+                        <input type="radio" name="exportFormat" value="jpg">
+                        <span class="option-label">
+                            <strong>JPG Image</strong>
+                            <small>Smaller file, WhatsApp/Email</small>
+                        </span>
+                    </label>
+                    <label class="export-option">
+                        <input type="radio" name="exportFormat" value="json">
+                        <span class="option-label">
+                            <strong>JSON Data</strong>
+                            <small>Save/share offer data</small>
+                        </span>
+                    </label>
+                </div>
+                <div class="input-group mt-4">
+                    <label class="input-label">Filename</label>
+                    <input type="text" id="exportFilename" class="input-field" placeholder="saleshub-offer">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="doExportBtn">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Template Modal -->
+    <div id="saveTemplateModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="saveTemplateModalTitle">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2 id="saveTemplateModalTitle">Save as Template</h2>
+                <button class="modal-close" type="button" aria-label="Close save template modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label class="input-label">Template Name</label>
+                    <input type="text" id="templateName" class="input-field" placeholder="My Template">
+                </div>
+                <div class="saved-templates mt-4">
+                    <label class="input-label">Saved Templates</label>
+                    <div id="savedTemplatesList" class="templates-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="doSaveTemplateBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

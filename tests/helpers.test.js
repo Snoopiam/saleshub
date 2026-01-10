@@ -12,9 +12,7 @@ import {
     excelDateToJS,
     escapeHtml,
     sanitizeInput,
-    checkFileSize,
-    encodeApiKey,
-    decodeApiKey
+    checkFileSize
 } from '../js/utils/helpers.js';
 
 // ============================================================================
@@ -355,40 +353,5 @@ describe('checkFileSize', () => {
 
         const largeFile = { size: 51 * 1024 * 1024 };
         expect(checkFileSize(largeFile)).toBe(false);
-    });
-});
-
-// ============================================================================
-// API KEY ENCODING
-// ============================================================================
-
-describe('encodeApiKey', () => {
-    it('encodes strings to base64', () => {
-        expect(encodeApiKey('hello')).toBe('aGVsbG8=');
-        expect(encodeApiKey('sk-abc123')).toBe('c2stYWJjMTIz');
-    });
-
-    it('produces different output from input', () => {
-        const input = 'my-api-key';
-        const encoded = encodeApiKey(input);
-        expect(encoded).not.toBe(input);
-    });
-});
-
-describe('decodeApiKey', () => {
-    it('decodes base64 strings', () => {
-        expect(decodeApiKey('aGVsbG8=')).toBe('hello');
-        expect(decodeApiKey('c2stYWJjMTIz')).toBe('sk-abc123');
-    });
-
-    it('handles invalid base64 gracefully', () => {
-        expect(decodeApiKey('invalid!!!')).toBe('');
-    });
-
-    it('round-trips with encodeApiKey', () => {
-        const original = 'my-secret-key-12345';
-        const encoded = encodeApiKey(original);
-        const decoded = decodeApiKey(encoded);
-        expect(decoded).toBe(original);
     });
 });
