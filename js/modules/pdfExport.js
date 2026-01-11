@@ -139,7 +139,8 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
       throw new Error('Received empty PDF file. Please try again.');
     }
 
-    const filename = sanitizeFilename(data.projectName || 'SalesHUB_Offer');
+    // Build filename: projectName_unitNo_HQ.pdf
+    const filename = buildFilename(data.projectName, data.unitNo, 'HQ');
     downloadBlob(blob, `${filename}.pdf`);
 
     return { success: true };
@@ -223,6 +224,28 @@ function downloadBlob(blob, filename) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Build filename from project name, unit number, and export type
+ * Format: projectName_unitNo_exportType (e.g., palm-jumeirah_A-1205_HQ)
+ */
+function buildFilename(projectName, unitNo, exportType) {
+  const parts = [];
+
+  if (projectName) {
+    parts.push(sanitizeFilename(projectName));
+  }
+
+  if (unitNo) {
+    parts.push(sanitizeFilename(unitNo));
+  }
+
+  if (exportType) {
+    parts.push(exportType);
+  }
+
+  return parts.length > 0 ? parts.join('_') : 'saleshub-offer';
 }
 
 /**

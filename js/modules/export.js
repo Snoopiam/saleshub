@@ -34,7 +34,7 @@ export function initExport() {
     const exportPdfLegacyBtn = getById('export-pdf-legacy');
     if (exportPdfLegacyBtn) {
         exportPdfLegacyBtn.addEventListener('click', async () => {
-            await exportLegacyPDF(getDefaultFilename());
+            await exportLegacyPDF(buildFilename('Legacy'));
         });
     }
 }
@@ -95,7 +95,7 @@ function openExportModal() {
         // Set default filename
         const filename = getById('exportFilename');
         if (filename) {
-            filename.value = getDefaultFilename();
+            filename.value = buildFilename();
         }
     }
 }
@@ -105,7 +105,7 @@ function openExportModal() {
  */
 async function handleExport() {
     const format = document.querySelector('input[name="exportFormat"]:checked')?.value;
-    const filename = getValue('exportFilename') || getDefaultFilename();
+    const customFilename = getValue('exportFilename');
 
     switch (format) {
         case 'pdf':
@@ -117,17 +117,17 @@ async function handleExport() {
                 await generateBackendPDF(offerData, branding, template);
             } catch (e) {
                 console.warn('Backend PDF failed, falling back to legacy:', e);
-                await exportLegacyPDF(filename);
+                await exportLegacyPDF(customFilename || buildFilename('Legacy'));
             }
             break;
         case 'png':
-            await exportImage(filename, 'png');
+            await exportImage(customFilename || buildFilename('PNG'), 'png');
             break;
         case 'jpg':
-            await exportImage(filename, 'jpg');
+            await exportImage(customFilename || buildFilename('JPG'), 'jpg');
             break;
         case 'json':
-            exportJSON(filename);
+            exportJSON(customFilename || buildFilename('JSON'));
             break;
         default:
             toast('Please select an export format', 'error');
@@ -293,8 +293,29 @@ function closeExportModal() {
     }
 }
 
-function getDefaultFilename() {
-    return sanitizeFilename(getValue('input-project-name') || 'saleshub-offer');
+/**
+ * Build filename from project name, unit number, and export type
+ * Format: projectName_unitNo_exportType (e.g., palm-jumeirah_a-1205_Legacy)
+ */
+function buildFilename(exportType = '') {
+    const projectName = getValue('input-project-name');
+    const unitNo = getValue('u_unit_number');
+
+    const parts = [];
+
+    if (projectName) {
+        parts.push(sanitizeFilename(projectName));
+    }
+
+    if (unitNo) {
+        parts.push(sanitizeFilename(unitNo));
+    }
+
+    if (exportType) {
+        parts.push(exportType);
+    }
+
+    return parts.length > 0 ? parts.join('_') : 'saleshub-offer';
 }
 
 function sanitizeFilename(value) {
