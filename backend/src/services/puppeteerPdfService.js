@@ -8,6 +8,7 @@
  * - Added retry logic for connection errors
  * - Improved error handling for browser disconnection
  * - Fixed: Convert Uint8Array to Buffer for proper response handling
+ * - Synced CSS with frontend preview styles (shadow, fonts, footer)
  */
 
 const puppeteer = require('puppeteer');
@@ -157,9 +158,9 @@ class PuppeteerPdfService {
       // Generate HTML from template
       const html = this.generateHTML(data, branding, template);
 
-      // Set content with reasonable timeout
+      // Set content with networkidle0 for complete resource loading
       await page.setContent(html, {
-        waitUntil: ['load', 'domcontentloaded'],
+        waitUntil: ['load', 'domcontentloaded', 'networkidle0'],
         timeout: 30000
       });
 
@@ -171,8 +172,9 @@ class PuppeteerPdfService {
             setTimeout(() => reject(new Error('Font timeout')), 10000)
           )
         ]);
+        console.log('[Puppeteer] Fonts loaded successfully');
       } catch (fontError) {
-        console.warn('[Puppeteer] Font loading timeout, continuing anyway');
+        console.warn('[Puppeteer] Font loading timeout - PDF may use fallback fonts');
       }
 
       // Generate PDF
@@ -202,6 +204,7 @@ class PuppeteerPdfService {
 
   /**
    * Generate HTML that matches the live preview
+   * CSS synchronized with frontend preview.css and landscape.css
    */
   generateHTML(data, branding, template) {
     const primaryColor = branding.primaryColor || '#62c6c1';
@@ -248,7 +251,8 @@ class PuppeteerPdfService {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${data.projectName || 'Sales Offer'}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- SYNCED: Font weights match frontend index.html -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -260,6 +264,7 @@ class PuppeteerPdfService {
       --primary-color: ${primaryColor};
       --text-dark: #1a1a1a;
       --text-gray: #4a5568;
+      --text-gray-medium: #6b7280;
       --text-emphasis: #2d3748;
       --border-light: #e2e8f0;
       --border-lighter: #edf2f7;
@@ -299,7 +304,7 @@ class PuppeteerPdfService {
       background-color: var(--primary-color);
     }
 
-    /* Logo */
+    /* Logo - SYNCED with landscape.css */
     .logo-area {
       position: absolute;
       top: 12mm;
@@ -357,7 +362,7 @@ class PuppeteerPdfService {
       padding-top: 20px;
     }
 
-    /* Floor Plan */
+    /* Floor Plan - SYNCED: shadow opacity matches preview.css */
     .floorplan-frame {
       width: 100%;
       height: ${isPortrait ? '80mm' : '140mm'};
@@ -370,7 +375,8 @@ class PuppeteerPdfService {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
-      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+      /* SYNCED: Matches preview.css drop-shadow opacity (0.603) */
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.603));
     }
 
     /* Tables */
@@ -448,7 +454,7 @@ class PuppeteerPdfService {
       border-bottom: 1px solid var(--border-lighter);
     }
 
-    /* Footer */
+    /* Footer - SYNCED with preview.css */
     .footer-area {
       position: absolute;
       bottom: 12mm;
@@ -456,32 +462,38 @@ class PuppeteerPdfService {
       text-align: right;
     }
 
+    /* SYNCED: font-size matches preview.css (14px, not 18px) */
     .footer-proj {
       font-weight: 900;
-      font-size: 18px;
+      font-size: 14px;
       color: var(--text-dark);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
     .footer-sub {
-      font-size: 12px;
+      font-size: 10px;
       color: var(--primary-color);
       letter-spacing: 0.2em;
       text-transform: uppercase;
       margin-top: 4px;
     }
 
+    /* Created By Footer - SYNCED with preview.css */
     .created-by-footer {
       position: absolute;
-      bottom: 4mm;
+      bottom: 5mm;
       left: 15mm;
       right: 15mm;
       text-align: center;
-      font-size: 9px;
-      color: var(--text-gray);
+      font-size: 8px;
+      color: var(--text-gray-medium);
       text-transform: uppercase;
       letter-spacing: 0.03em;
+      /* SYNCED: Prevent text wrapping, matches preview.css */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   </style>
 </head>

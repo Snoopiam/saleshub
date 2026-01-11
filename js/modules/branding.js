@@ -5,6 +5,7 @@
 
 import { getById, toast, compressImageFile } from '../utils/helpers.js';
 import { getBranding, saveBranding, getLabels, saveLabels } from './storage.js';
+import { saveImage, deleteImage } from './imageStorage.js';
 
 /**
  * Initialize branding functionality
@@ -93,8 +94,8 @@ function previewColor(color) {
 
 /**
  * Set up logo upload
- * Uses DUAL STORAGE STRATEGY:
- * - Original quality stored in window.originalImages.logo (for PDF export)
+ * Uses PERSISTENT STORAGE with IndexedDB:
+ * - Original quality stored in IndexedDB + window.originalImages.logo (for PDF export)
  * - Compressed version stored in localStorage (for preview/persistence)
  */
 function setupLogoUpload() {
@@ -115,20 +116,22 @@ function setupLogoUpload() {
                     return;
                 }
 
-                // DUAL STORAGE STRATEGY: Store original for PDF generation
-                // Original stays in memory, compressed version goes to localStorage
+                // PERSISTENT STORAGE: Save original to IndexedDB (survives refresh)
                 window.originalImages.logo = file;
+                saveImage('logo', file).catch(err => {
+                    console.warn('[Branding] Could not save logo to IndexedDB:', err);
+                });
 
                 if (logoFileName) {
                     logoFileName.textContent = file.name;
                 }
 
-                // DUAL STORAGE: Compress for localStorage (400px max width, 70% quality)
-                // Original quality preserved in window.originalImages for PDF export
+                // Compress for localStorage preview (400px max width, 70% quality)
+                // Original quality preserved in IndexedDB for PDF export
                 try {
                     const compressedBase64 = await compressImageFile(file, 400, 0.7);
                     showLogoPreview(compressedBase64);
-                    toast('Logo uploaded (high quality)', 'success');
+                    toast('Logo uploaded (high quality preserved)', 'success');
                 } catch (error) {
                     // Fallback to original if compression fails
                     const reader = new FileReader();
@@ -227,7 +230,7 @@ export function applyBranding() {
 /**
  * Reset branding to defaults
  */
-export function resetBranding() {
+export async function resetBranding() {
     const defaultBranding = {
         companyName: 'Kennedy Property',
         primaryColor: '#62c6c1',
@@ -244,8 +247,9 @@ export function resetBranding() {
         agency: 'Agency Fees (2% of Selling Price + Vat)'
     };
 
-    // Clear original logo from memory
+    // Clear original logo from memory and IndexedDB
     window.originalImages.logo = null;
+    await deleteImage('logo').catch(() => {});
 
     saveBranding(defaultBranding);
     saveLabels(defaultLabels);

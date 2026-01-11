@@ -2,6 +2,7 @@
 
 | Date | Type | Score | Status | Key Findings |
 |------|------|-------|--------|--------------|
+| [2026-01-11_pdf-hq-fixes](./2026-01-11_pdf-hq-fixes/) | PDF Export | N/A | **COMPLETE** | 3 PDF issues fixed (payment, style, images) |
 | [2026-01-11_feature-removal](./2026-01-11_feature-removal/) | Cleanup | N/A | **COMPLETE** | AI Import & JSON Import removed |
 | [2026-01-11_storage-network-audit](./2026-01-11_storage-network-audit/) | Network/Storage | 75/100 | **RESOLVED** | Dual Storage Strategy implemented |
 | [2026-01-10_pdf-api-audit](./2026-01-10_pdf-api-audit/) | Backend API | 58/100 | **RESOLVED** | Browser race condition fixed |
@@ -14,6 +15,7 @@
 
 | Report | Link | Status |
 |--------|------|--------|
+| **PDF HQ Fixes** | [PDF_HQ_FIXES.md](./2026-01-11_pdf-hq-fixes/PDF_HQ_FIXES.md) | **COMPLETE** |
 | **Feature Removal** | [REMOVAL_REPORT.md](./2026-01-11_feature-removal/REMOVAL_REPORT.md) | **COMPLETE** |
 | **Dual Storage Strategy** | [DUAL_STORAGE_STRATEGY.md](./2026-01-11_storage-network-audit/DUAL_STORAGE_STRATEGY.md) | **COMPLETE** |
 | Network Resilience Audit | [NETWORK_RESILIENCE_AUDIT.md](./2026-01-11_storage-network-audit/NETWORK_RESILIENCE_AUDIT.md) | Complete |
@@ -27,12 +29,38 @@
 
 | Issue | First Found | Status | Resolution |
 |-------|-------------|--------|------------|
+| **Total Initial Payment missing** | 2026-01-11 | **RESOLVED** | Added to saveFormData() |
+| **PDF style differences** | 2026-01-11 | **RESOLVED** | CSS synced + networkidle0 |
+| **Image quality lost on refresh** | 2026-01-11 | **RESOLVED** | IndexedDB persistent storage |
 | **Image compression is NO-OP** | 2026-01-11 | **RESOLVED** | Dual Storage Strategy |
 | **AI module fetch has no timeout** | 2026-01-11 | **RESOLVED** | Feature removed entirely |
 | **localStorage quota handling** | 2026-01-11 | **RESOLVED** | Dual Storage Strategy |
 | Browser race condition | 2026-01-10 | **RESOLVED** | Retry logic + mutex |
 | No retry logic for browser ops | 2026-01-10 | **RESOLVED** | Retry wrapper added |
 | No fetch timeout (pdfExport) | 2026-01-10 | **RESOLVED** | AbortController added |
+
+---
+
+## PDF HQ Fixes Summary (2026-01-11)
+
+**Issues Fixed:**
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Total Initial Payment | Not included in saveFormData() | Added `totalPayment: calculateTotal()` |
+| Style differences | CSS not synced with preview.css | Updated shadow, fonts, footer styles |
+| Image quality | window.originalImages lost on refresh | IndexedDB persistent storage |
+
+**Files Created:**
+- `js/modules/imageStorage.js` (251 lines) - IndexedDB wrapper
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `js/app.js` | totalPayment field, IndexedDB integration |
+| `js/modules/branding.js` | Logo saved to IndexedDB |
+| `js/modules/pdfExport.js` | Load from IndexedDB before export |
+| `backend/src/services/puppeteerPdfService.js` | CSS sync, networkidle0 |
 
 ---
 
@@ -68,23 +96,26 @@
 
 **Problem:** localStorage fills up with large images, compression doesn't work, images get deleted.
 
-**Solution:** Keep two versions of each image:
+**Solution:** Three-tier storage:
 
-| Version | Storage | Quality | Purpose |
-|---------|---------|---------|---------|
-| Original | Memory (`window.originalImages`) | 100% | PDF generation |
-| Compressed | localStorage | 50-70% | Preview/Auto-save |
+| Layer | Storage | Persistence | Purpose |
+|-------|---------|-------------|---------|
+| 1 | IndexedDB | Permanent | Original quality images |
+| 2 | `window.originalImages` | Session | Runtime cache |
+| 3 | localStorage | Permanent | Compressed previews |
 
 **Files modified:**
 
-1. `js/utils/helpers.js` - Added `fileToBase64()` helper + `window.originalImages` global
-2. `js/app.js` - Store original floor plan in memory, compress to 800px/60%
-3. `js/modules/branding.js` - Store original logo, compress to 400px/70%
-4. `js/modules/pdfExport.js` - Use originals for PDF export
+1. `js/modules/imageStorage.js` - NEW: IndexedDB wrapper
+2. `js/utils/helpers.js` - Added `fileToBase64()` helper + `window.originalImages` global
+3. `js/app.js` - Store original floor plan, compress to 800px/60%
+4. `js/modules/branding.js` - Store original logo, compress to 400px/70%
+5. `js/modules/pdfExport.js` - Use IndexedDB/originals for PDF export
 
 **Benefits:**
 - localStorage uses ~4x less space
 - PDF gets original quality images
+- Images persist across page refresh
 - No more quota exceeded errors
 
 ---
@@ -97,6 +128,7 @@ CSS/UX:           -- → 78 (NEW)
 Network/Frontend: -- → 55 → 75 (RESOLVED)
 Backend API:      -- → 58 → RESOLVED
 Error/Resilience: 45 → RESOLVED (AI removed)
+PDF Export:       -- → RESOLVED (3 issues fixed)
 ```
 
 ---

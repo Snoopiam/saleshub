@@ -15,12 +15,17 @@ import { initExport } from './modules/export.js';
 import { initExcel } from './modules/excel.js';
 import { initBeta } from './modules/beta.js';
 import { initCategory, getReadyPropertyData, setReadyPropertyData, updatePreviewForCategory } from './modules/category.js';
+// IndexedDB for persistent original images
+import { saveImage, restoreImages, clearAllImages } from './modules/imageStorage.js';
 
 const debouncedSave = debounce(saveFormData, 500);
 const debouncedPreview = debounce(updatePreview, 150);
 let lastFocusedElement = null;
 
-function init() {
+async function init() {
+    // Restore original images from IndexedDB before other init
+    await restoreImages();
+
     initTemplates();
     initCalculator();
     initValidator();
@@ -154,9 +159,11 @@ async function handleFloorPlanUpload(e) {
 
     clearError();
 
-    // DUAL STORAGE STRATEGY: Store original for PDF generation
-    // Original stays in memory, compressed version goes to localStorage
+    // PERSISTENT STORAGE: Save original to IndexedDB (survives refresh)
     window.originalImages.floorPlan = file;
+    saveImage('floorPlan', file).catch(err => {
+        console.warn('[App] Could not save floor plan to IndexedDB:', err);
+    });
 
     const img = getById('floorPlanImg');
     const placeholder = getById('imgPlaceholder');
@@ -168,15 +175,15 @@ async function handleFloorPlanUpload(e) {
         img.dataset.rawObjectUrl = rawObjectUrl;
         img.src = rawObjectUrl;
         img.style.display = 'block';
-        const unitModel = getValue('u_unit_model');
+        const unitModel = getValue('select-unit-model');
         img.alt = unitModel ? `Floor plan for ${unitModel}` : 'Floor plan image';
     }
     if (placeholder) placeholder.style.display = 'none';
     if (fileName) fileName.textContent = escapeHtml(file.name);
-    toast('Floor plan uploaded (high quality)', 'success');
+    toast('Floor plan uploaded (high quality preserved)', 'success');
 
-    // DUAL STORAGE: Compress aggressively for localStorage (800px, 60% quality)
-    // Original quality preserved in window.originalImages for PDF export
+    // DUAL STORAGE: Compress for localStorage preview (800px, 60% quality)
+    // Original quality preserved in IndexedDB for PDF export
     compressImageFile(file, 800, 0.6).then(compressedDataUrl => {
         saveCurrentOffer({ floorPlanImage: compressedDataUrl });
     }).catch(() => { /* Silent fail - image displayed from original file */ });
@@ -185,32 +192,36 @@ async function handleFloorPlanUpload(e) {
 function saveFormData() {
     const offer = {
         projectName: getValue('input-project-name'),
-        unitNo: getValue('u_unit_number'),
-        unitType: getValue('u_unit_type'),
-        bedrooms: getValue('u_unit_model'),
-        views: getValue('u_views'),
+        unitNo: getValue('input-unit-number'),
+        unitType: getValue('input-unit-type'),
+        bedrooms: getValue('select-unit-model'),
+        views: getValue('select-views'),
         internalArea: getValue('input-internal-area'),
         balconyArea: getValue('input-balcony-area'),
         totalArea: getValue('input-total-area'),
-        villaInternal: getValue('u_villa_internal'),
-        villaTerrace: getValue('u_villa_terrace'),
-        bua: getValue('u_built_up_area'),
-        gfa: getValue('u_gross_floor_area'),
-        villaTotal: getValue('u_villa_total'),
-        plotSize: getValue('u_plot_size'),
-        plotSizeOnly: getValue('u_plot_size'),
-        allowedBuild: getValue('u_allowed_build'),
-        originalPrice: getValue('u_original_price'),
-        sellingPrice: getValue('u_selling_price'),
-        resaleClausePercent: getValue('u_resale_clause'),
-        amountPaidPercent: getValue('u_amount_paid_percent'),
-        amountPaid: getValue('u_amount_paid'),
+        villaInternal: getValue('input-villa-internal'),
+        villaTerrace: getValue('input-villa-terrace'),
+        bua: getValue('input-built-up-area'),
+        gfa: getValue('input-gross-floor-area'),
+        villaTotal: getValue('input-villa-total'),
+        plotSize: getValue('input-plot-size'),
+        plotSizeOnly: getValue('input-plot-size-only'),
+        allowedBuild: getValue('input-allowed-build'),
+        originalPrice: getValue('input-original-price'),
+        sellingPrice: getValue('input-selling-price'),
+        resaleClausePercent: getValue('input-resale-clause'),
+        amountPaidPercent: getValue('input-amount-paid-percent'),
+        amountPaid: getValue('input-amount-paid'),
         refund: getValue('input-refund-amount'),
-        balanceResale: getValue('u_balance_resale'),
+        balanceResale: getValue('input-balance-resale'),
         premium: getValue('input-premium-amount'),
         adminFees: getValue('input-admin-fees'),
-        adgm: getValue('u_adgm_transfer'),
+        adgmTransfer: getValue('input-adgm-transfer'),
+        adgmTermination: getValue('input-adgm-termination-fee'),
+        adgmElectronic: getValue('input-adgm-electronic-fee'),
         agencyFees: getValue('input-agency-fees'),
+        // FIX: Include calculated total for PDF export
+        totalPayment: calculateTotal(),
         paymentPlan: getPaymentPlan(),
         readyProperty: getReadyPropertyData()
     };
@@ -220,23 +231,33 @@ function saveFormData() {
 function loadFormData() {
     const offer = getCurrentOffer();
     setValue('input-project-name', offer.projectName);
-    setValue('u_unit_number', offer.unitNo);
-    setValue('u_unit_type', offer.unitType);
-    setValue('u_unit_model', offer.bedrooms);
-    setValue('u_views', offer.views);
+    setValue('input-unit-number', offer.unitNo);
+    setValue('input-unit-type', offer.unitType);
+    setValue('select-unit-model', offer.bedrooms);
+    setValue('select-views', offer.views);
     setValue('input-internal-area', offer.internalArea);
     setValue('input-balcony-area', offer.balconyArea);
     setValue('input-total-area', offer.totalArea);
-    setValue('u_original_price', offer.originalPrice);
-    setValue('u_selling_price', offer.sellingPrice);
-    setValue('u_resale_clause', offer.resaleClausePercent);
-    setValue('u_amount_paid_percent', offer.amountPaidPercent);
-    setValue('u_amount_paid', offer.amountPaid);
+    setValue('input-villa-internal', offer.villaInternal);
+    setValue('input-villa-terrace', offer.villaTerrace);
+    setValue('input-built-up-area', offer.bua);
+    setValue('input-gross-floor-area', offer.gfa);
+    setValue('input-villa-total', offer.villaTotal);
+    setValue('input-plot-size', offer.plotSize);
+    setValue('input-plot-size-only', offer.plotSizeOnly);
+    setValue('input-allowed-build', offer.allowedBuild);
+    setValue('input-original-price', offer.originalPrice);
+    setValue('input-selling-price', offer.sellingPrice);
+    setValue('input-resale-clause', offer.resaleClausePercent);
+    setValue('input-amount-paid-percent', offer.amountPaidPercent);
+    setValue('input-amount-paid', offer.amountPaid);
     setValue('input-refund-amount', offer.refund);
-    setValue('u_balance_resale', offer.balanceResale);
+    setValue('input-balance-resale', offer.balanceResale);
     setValue('input-premium-amount', offer.premium);
     setValue('input-admin-fees', offer.adminFees);
-    setValue('u_adgm_transfer', offer.adgm);
+    setValue('input-adgm-transfer', offer.adgmTransfer || offer.adgm);
+    setValue('input-adgm-termination-fee', offer.adgmTermination);
+    setValue('input-adgm-electronic-fee', offer.adgmElectronic);
     setValue('input-agency-fees', offer.agencyFees);
 
     if (offer.paymentPlan && offer.paymentPlan.length > 0) setPaymentPlan(offer.paymentPlan);
@@ -322,7 +343,7 @@ function updatePreviewAreaRows(unitType) {
     }
 }
 
-function clearForm() {
+async function clearForm() {
     queryAll('#inputPanel input[type="text"], #inputPanel input[type="number"]').forEach(input => input.value = '');
     // [FIX] Clear to single empty row (matches new default)
     setPaymentPlan([
@@ -333,9 +354,10 @@ function clearForm() {
     const placeholder = getById('imgPlaceholder');
     if (placeholder) placeholder.style.display = 'none';
 
-    // Clear original images from memory
+    // Clear original images from memory and IndexedDB
     window.originalImages.floorPlan = null;
     window.originalImages.logo = null;
+    await clearAllImages().catch(() => {});
 
     clearAllErrors();
     saveFormData();
@@ -351,6 +373,30 @@ function handleSaveTemplate() {
     if (nameInput) nameInput.value = '';
     getById('saveTemplateModal')?.classList.add('hidden');
     renderTemplatesList();
+}
+
+// Create SVG icon element safely (no innerHTML)
+function createSvgIcon(type) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('viewBox', '0 0 24 24');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('stroke-width', '2');
+
+    if (type === 'load') {
+        path.setAttribute('d', 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12');
+    } else if (type === 'delete') {
+        path.setAttribute('d', 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16');
+    }
+
+    svg.appendChild(path);
+    return svg;
 }
 
 function renderTemplatesList() {
@@ -380,14 +426,12 @@ function renderTemplatesList() {
         const loadBtn = document.createElement('button');
         loadBtn.className = 'load-template-btn';
         loadBtn.type = 'button';
-        // Static SVG icon - safe innerHTML usage
-        loadBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>';
+        loadBtn.appendChild(createSvgIcon('load'));
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-template-btn';
         deleteBtn.type = 'button';
-        // Static SVG icon - safe innerHTML usage
-        deleteBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+        deleteBtn.appendChild(createSvgIcon('delete'));
 
         actionsDiv.appendChild(loadBtn);
         actionsDiv.appendChild(deleteBtn);
@@ -408,20 +452,33 @@ function handleLoadTemplate(templateId) {
     if (!template) { toast('Template not found', 'error'); return; }
     const offer = template.data;
     setValue('input-project-name', offer.projectName);
-    setValue('u_unit_number', offer.unitNo);
-    setValue('u_unit_type', offer.unitType);
-    setValue('u_unit_model', offer.bedrooms);
-    setValue('u_views', offer.views);
+    setValue('input-unit-number', offer.unitNo);
+    setValue('input-unit-type', offer.unitType);
+    setValue('select-unit-model', offer.bedrooms);
+    setValue('select-views', offer.views);
     setValue('input-internal-area', offer.internalArea);
     setValue('input-balcony-area', offer.balconyArea);
     setValue('input-total-area', offer.totalArea);
-    setValue('u_original_price', offer.originalPrice);
-    setValue('u_selling_price', offer.sellingPrice);
+    setValue('input-villa-internal', offer.villaInternal);
+    setValue('input-villa-terrace', offer.villaTerrace);
+    setValue('input-built-up-area', offer.bua);
+    setValue('input-gross-floor-area', offer.gfa);
+    setValue('input-villa-total', offer.villaTotal);
+    setValue('input-plot-size', offer.plotSize);
+    setValue('input-plot-size-only', offer.plotSizeOnly);
+    setValue('input-allowed-build', offer.allowedBuild);
+    setValue('input-original-price', offer.originalPrice);
+    setValue('input-selling-price', offer.sellingPrice);
+    setValue('input-resale-clause', offer.resaleClausePercent);
+    setValue('input-amount-paid-percent', offer.amountPaidPercent);
+    setValue('input-amount-paid', offer.amountPaid);
     setValue('input-refund-amount', offer.refund);
-    setValue('u_balance_resale', offer.balanceResale);
+    setValue('input-balance-resale', offer.balanceResale);
     setValue('input-premium-amount', offer.premium);
     setValue('input-admin-fees', offer.adminFees);
-    setValue('u_adgm_transfer', offer.adgm);
+    setValue('input-adgm-transfer', offer.adgmTransfer || offer.adgm);
+    setValue('input-adgm-termination-fee', offer.adgmTermination);
+    setValue('input-adgm-electronic-fee', offer.adgmElectronic);
     setValue('input-agency-fees', offer.agencyFees);
     if (offer.paymentPlan) setPaymentPlan(offer.paymentPlan);
     runAllCalculations();

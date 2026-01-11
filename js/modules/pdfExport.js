@@ -2,13 +2,14 @@
  * PDF Export Module - Backend Integration
  * Uses Puppeteer backend for high-quality PDFs with real selectable text
  *
- * DUAL STORAGE STRATEGY:
- * - Original quality images stored in window.originalImages (for PDF export)
+ * PERSISTENT IMAGE STORAGE:
+ * - Original quality images stored in IndexedDB (survives page refresh)
  * - Compressed versions stored in localStorage (for preview/persistence)
- * - This module uses original images when available for best PDF quality
+ * - This module loads original images from IndexedDB for best PDF quality
  */
 
 import { fileToBase64 } from '../utils/helpers.js';
+import { getImageAsBase64 } from './imageStorage.js';
 
 // API endpoint - relative path (same server serves frontend + API)
 const API_BASE = '/api';
@@ -45,7 +46,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = PDF_TIMEOUT_MS) {
 
 /**
  * Get original quality images for PDF export
- * Uses window.originalImages if available, falls back to localStorage versions
+ * Uses IndexedDB for persistent storage, falls back to window.originalImages or localStorage
  * @param {Object} data - Offer data with compressed images
  * @param {Object} branding - Branding with compressed logo
  * @returns {Promise<{pdfData: Object, pdfBranding: Object}>}
@@ -55,26 +56,38 @@ async function getOriginalImagesForPDF(data, branding) {
   const pdfData = { ...data };
   const pdfBranding = { ...branding };
 
-  // DUAL STORAGE: Use original floor plan if available
-  if (window.originalImages?.floorPlan) {
-    try {
-      console.log('[PDF Export] Using original quality floor plan');
+  // Try to get original floor plan from IndexedDB (persistent)
+  try {
+    const floorPlanBase64 = await getImageAsBase64('floorPlan');
+    if (floorPlanBase64) {
+      console.log('[PDF Export] Using original quality floor plan from IndexedDB');
+      pdfData.floorPlanImage = floorPlanBase64;
+    } else if (window.originalImages?.floorPlan) {
+      // Fallback to memory if IndexedDB empty
+      console.log('[PDF Export] Using original quality floor plan from memory');
       pdfData.floorPlanImage = await fileToBase64(window.originalImages.floorPlan);
-    } catch (error) {
-      console.warn('[PDF Export] Could not read original floor plan, using compressed:', error.message);
-      // Keep the compressed version from data
+    } else {
+      console.log('[PDF Export] Using compressed floor plan from localStorage');
     }
+  } catch (error) {
+    console.warn('[PDF Export] Could not get original floor plan:', error.message);
   }
 
-  // DUAL STORAGE: Use original logo if available
-  if (window.originalImages?.logo) {
-    try {
-      console.log('[PDF Export] Using original quality logo');
+  // Try to get original logo from IndexedDB (persistent)
+  try {
+    const logoBase64 = await getImageAsBase64('logo');
+    if (logoBase64) {
+      console.log('[PDF Export] Using original quality logo from IndexedDB');
+      pdfBranding.logo = logoBase64;
+    } else if (window.originalImages?.logo) {
+      // Fallback to memory if IndexedDB empty
+      console.log('[PDF Export] Using original quality logo from memory');
       pdfBranding.logo = await fileToBase64(window.originalImages.logo);
-    } catch (error) {
-      console.warn('[PDF Export] Could not read original logo, using compressed:', error.message);
-      // Keep the compressed version from branding
+    } else {
+      console.log('[PDF Export] Using compressed logo from localStorage');
     }
+  } catch (error) {
+    console.warn('[PDF Export] Could not get original logo:', error.message);
   }
 
   return { pdfData, pdfBranding };
@@ -96,7 +109,7 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
   try {
     console.log('[PDF Export] Generating PDF...');
 
-    // DUAL STORAGE: Get original quality images for PDF
+    // Get original quality images from IndexedDB for PDF
     const { pdfData, pdfBranding } = await getOriginalImagesForPDF(data, branding);
 
     const response = await fetchWithTimeout(`${API_BASE}/pdf/generate`, {
