@@ -4,58 +4,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SalesHUB is a browser-based real estate sales offer document generator for UAE properties. It creates printable A4 documents with property details, financial breakdowns, floor plans, and payment plans. The app runs entirely client-side with localStorage persistence.
+SalesHUB is a real estate sales offer document generator for UAE properties. It creates A4 documents with property details, financial breakdowns, floor plans, and payment plans. The app has a browser frontend with localStorage persistence and an Express backend for high-quality PDF generation via Puppeteer.
 
 ## Commands
 
 ```bash
-npm start              # Start http-server on port 8000
+npm start              # Start Express server on port 8000 (serves frontend + PDF API)
+npm run dev            # Start with nodemon for auto-reload
 npm test               # Run all tests with Vitest
 npm test calculator    # Run tests matching "calculator"
 npm run test:coverage  # Run tests with coverage report
-npm run lint           # ESLint check on js/ directory
-npm run lint:fix       # Auto-fix ESLint issues
+npm run lint           # ESLint check on js/ and backend/src/
+npm run build:css      # Build Tailwind CSS
 ```
 
 ## Architecture
 
-### Module System
-
-ES Modules throughout. Entry point is `js/app.js` which imports and initializes all feature modules:
+### Full Stack Structure
 
 ```
-js/app.js (orchestrator)
-├── js/utils/helpers.js     # Shared utilities (DOM, formatting, validation)
+server.js                    # Express server (frontend + API)
+├── backend/src/
+│   ├── routes/              # API route definitions
+│   ├── controllers/         # Request handlers (pdfController.js)
+│   └── services/            # Puppeteer PDF service
+│
+├── js/app.js               # Frontend orchestrator
+├── js/utils/helpers.js     # Shared utilities
 └── js/modules/
-    ├── calculator.js       # Auto-calculation with lock/unlock feature
-    ├── storage.js          # localStorage persistence (single key: 'salesOfferApp')
-    ├── category.js         # Off-Plan vs Ready Property mode switching
-    ├── paymentPlan.js      # Drag-drop payment milestone table
-    ├── branding.js         # Company logo/colors customization
-    ├── validator.js        # Field validation
-    ├── templates.js        # Template selector UI
-    ├── export.js           # PDF/image/JSON export (html2pdf.js for high-quality PDFs)
+    ├── calculator.js       # Auto-calculation with lock/unlock
+    ├── storage.js          # localStorage (key: 'salesOfferApp')
+    ├── category.js         # Off-Plan vs Ready Property modes
+    ├── paymentPlan.js      # Drag-drop milestone table
+    ├── branding.js         # Logo/colors customization
+    ├── pdfExport.js        # Backend PDF API client
+    ├── export.js           # Legacy html2pdf.js export
     ├── excel.js            # Excel import via SheetJS
-    ├── ai.js               # Google Gemini document parsing (Beta)
+    ├── validator.js        # Field validation
+    ├── templates.js        # Template selector
     └── beta.js             # Beta features panel
 ```
 
-### Data Flow
+### PDF Generation (Two Methods)
 
-1. User input → `app.js` event listeners → debounced save/preview
-2. `calculator.js` computes derived fields (totals, fees, premiums)
-3. `storage.js` persists to localStorage under single key `salesOfferApp`
-4. `updatePreview()` in `app.js` syncs form data to A4 preview panel
+1. **Backend (HQ)**: `pdfExport.js` → POST `/api/pdf/generate` → Puppeteer renders HTML template → returns PDF buffer
+2. **Legacy**: `export.js` → html2pdf.js captures preview as screenshot (client-side)
+
+### Dual Storage Strategy
+
+Images are stored in two versions to manage localStorage quota:
+- **Original quality**: `window.originalImages` (memory) - used for PDF export
+- **Compressed**: localStorage - used for preview/auto-save
 
 ### Key Patterns
 
 **Calculator Lock System**: Fields can be "locked" to override auto-calculation. Check `isFieldLocked()` before computing. Lock states persist in localStorage.
 
-**Category System**: Two modes - "offplan" (resale with payment plans) and "ready" (completed properties). Category stored in localStorage as `propertyCategory`. Calculator reads this to determine total calculation formula.
+**Category System**: Two modes - "offplan" (resale with payment plans) and "ready" (completed properties). Category stored in localStorage as `propertyCategory`. Calculator reads this directly (not imported) to avoid circular deps.
 
-**Circular Dependency Avoidance**: `calculator.js` reads category from localStorage directly instead of importing from `category.js` to avoid circular imports.
-
-**Event-Driven Updates**: Custom events like `dataImported`, `categoryChanged`, `unitTypeChanged` trigger preview updates across modules.
+**Event-Driven Updates**: Custom events `dataImported`, `categoryChanged`, `unitTypeChanged` trigger preview updates across modules.
 
 ### Property Types
 
@@ -67,25 +74,19 @@ js/app.js (orchestrator)
 
 Libraries loaded via CDN (not npm): Tailwind CSS, SheetJS (xlsx), html2pdf.js, SortableJS
 
-### PDF Generation
-
-PDF export uses html2pdf.js to capture the live preview as a high-quality screenshot. Settings: PNG format (lossless), scale 4x for high resolution, matches preview exactly.
-
 ## Testing
 
-Tests in `tests/` use Vitest with jsdom environment. Test files mirror module structure (e.g., `calculator.test.js` tests `calculator.js`).
-
-## CSS Structure
-
-- `css/main.css` - Input panel and UI styling
-- `css/preview.css` - A4 document preview styling
-- `css/print.css` - Print-specific styles
-- `css/beta.css` - Beta features panel
-- `css/templates/` - Template-specific stylesheets
+Tests in `tests/` use Vitest with jsdom environment. Test files mirror module structure.
 
 ## Field ID Conventions
 
 - `input-*` - Standard calculated fields
-- `u_*` - User input fields (legacy naming)
-- `disp_*` - Preview display elements
-- `display-*` - Alternative preview elements
+- `u_*` - User input fields (legacy)
+- `disp_*` / `display-*` - Preview display elements
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/pdf/generate` | POST | Generate PDF (body: `{data, branding, template}`) |
+| `/health` | GET | Health check |
