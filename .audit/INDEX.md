@@ -76,6 +76,7 @@
 | Compressed | localStorage | 50-70% | Preview/Auto-save |
 
 **Files modified:**
+
 1. `js/utils/helpers.js` - Added `fileToBase64()` helper + `window.originalImages` global
 2. `js/app.js` - Store original floor plan in memory, compress to 800px/60%
 3. `js/modules/branding.js` - Store original logo, compress to 400px/70%
