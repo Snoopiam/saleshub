@@ -36,3 +36,7 @@ nul
 *.temp
 ~$*
 tmpclaude-*
+
+# Claude Code
+.claude/
+code-agent/
