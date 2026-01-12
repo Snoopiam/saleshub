@@ -431,7 +431,7 @@ class PuppeteerPdfService {
       font-size: 11px;
     }
 
-    /* Payment Plan Table */
+    /* Payment Plan Table - SYNCED with preview.css */
     .payment-table {
       width: 100%;
       border-collapse: collapse;
@@ -439,7 +439,8 @@ class PuppeteerPdfService {
     }
 
     .payment-table th {
-      color: var(--primary-color);
+      /* SYNCED: Gray like row labels for consistency (not teal) */
+      color: var(--text-gray);
       font-weight: 700;
       font-size: 11px;
       padding: 3px 0;

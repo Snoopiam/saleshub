@@ -381,25 +381,15 @@ CATEGORY NOTES (OFF-PLAN vs READY)
     margin-bottom: 10px;
 }
 
-/* Table header cells */
+/* Table header cells - NOT used in data tables, but kept for compatibility */
 .data-table th {
     text-align: left;
-    color: var(--primary-color, #62c6c1);
+    color: var(--primary-color, #03C3CC);
     font-weight: 700;
     padding: 3px 0;
     border-bottom: 1px solid var(--border-light);
     background-color: transparent;
     text-transform: capitalize;
-}
-
-/* Header row variant */
-.table-header-row th {
-    text-align: left;
-    border-bottom: none;
-    font-size: 0.6875rem;                      /* 11px */
-    padding: 3px 0;
-    color: var(--primary-color, #62c6c1);
-    font-weight: 700;
 }
 
 /* Table data cells */
@@ -501,15 +491,25 @@ CATEGORY NOTES (OFF-PLAN vs READY)
 
    Edited via: Sidebar → Payment Plan section → Add/Edit rows
    Rows are sortable (drag to reorder)
+
+   CONSISTENCY:
+   Column headers use gray color (like row labels) instead of teal,
+   to be consistent with Property Details and Financial Breakdown tables
+   where only section titles are teal, not content labels.
 */
 .payment-plan-table {
     margin-top: 0 !important;
 }
 
-.payment-plan-table th {
+/* Payment Plan column headers - gray like row labels for consistency */
+.payment-plan-table th,
+.payment-plan-table .table-header-row th {
     font-size: 0.6875rem;                      /* 11px */
     padding: 3px 0;
     border-bottom: none;
+    color: var(--text-gray);                   /* Gray like row labels */
+    font-weight: 600;
+    text-transform: capitalize;
 }
 
 .payment-plan-table td {
