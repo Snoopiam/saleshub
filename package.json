@@ -4,7 +4,7 @@
   "description": "Professional real estate sales offer document generator for UAE properties",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js",
+    "start": "node --max-old-space-size=4096 server.js",
     "build:css": "tailwindcss -i ./css/tailwind-source.css -o ./css/tailwind.css --minify",
     "watch:css": "tailwindcss -i ./css/tailwind-source.css -o ./css/tailwind.css --watch",
     "test": "vitest",
