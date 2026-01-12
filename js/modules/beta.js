@@ -324,7 +324,10 @@ function createSelectDropdown(input, listId, options, allowCustom = false) {
     // Add custom option if allowed
     if (allowCustom) {
         const customItem = createElement('div', { className: 'dropdown-item dropdown-custom', 'data-index': options.length });
-        customItem.innerHTML = '<span class="custom-icon">+</span> Add custom option...';
+        const customIcon = createElement('span', { className: 'custom-icon' });
+        customIcon.textContent = '+';
+        customItem.appendChild(customIcon);
+        customItem.appendChild(document.createTextNode(' Add custom option...'));
         customItem.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -342,7 +345,15 @@ function createSelectDropdown(input, listId, options, allowCustom = false) {
         type: 'button',
         title: 'Open dropdown'
     });
-    arrowBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>';
+    const arrowSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    arrowSvg.setAttribute('viewBox', '0 0 24 24');
+    arrowSvg.setAttribute('fill', 'none');
+    arrowSvg.setAttribute('stroke', 'currentColor');
+    arrowSvg.setAttribute('stroke-width', '2');
+    const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arrowPath.setAttribute('d', 'M6 9l6 6 6-6');
+    arrowSvg.appendChild(arrowPath);
+    arrowBtn.appendChild(arrowSvg);
     arrowBtn.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -567,39 +578,74 @@ function handleUnitTypeChange() {
 }
 
 // ============================================
-// BETA FEATURE: Zoom Controls
+// BETA FEATURE: Zoom Controls with Fit-to-View
 // ============================================
 function initZoomControls() {
     const previewArea = getById('previewArea');
     if (!previewArea || document.querySelector('.zoom-controls')) return;
 
     const controls = createElement('div', { className: 'zoom-controls beta-feature' });
-    controls.innerHTML = `
-        <button class="zoom-btn" id="zoomOut" title="Zoom Out">−</button>
-        <span class="zoom-level" id="zoomLevel">100%</span>
-        <button class="zoom-btn" id="zoomIn" title="Zoom In">+</button>
-        <button class="zoom-btn" id="zoomReset" title="Reset">↺</button>
-    `;
+
+    // Create buttons using DOM methods
+    const fitBtn = createElement('button', { className: 'zoom-btn zoom-btn-fit', id: 'zoomFit', title: 'Fit to View' });
+    fitBtn.textContent = 'Fit';
+
+    const outBtn = createElement('button', { className: 'zoom-btn', id: 'zoomOut', title: 'Zoom Out' });
+    outBtn.textContent = '−';
+
+    const levelSpan = createElement('span', { className: 'zoom-level', id: 'zoomLevel' });
+    levelSpan.textContent = '100%';
+
+    const inBtn = createElement('button', { className: 'zoom-btn', id: 'zoomIn', title: 'Zoom In' });
+    inBtn.textContent = '+';
+
+    const resetBtn = createElement('button', { className: 'zoom-btn', id: 'zoomReset', title: '100%' });
+    resetBtn.textContent = '↺';
+
+    controls.appendChild(fitBtn);
+    controls.appendChild(outBtn);
+    controls.appendChild(levelSpan);
+    controls.appendChild(inBtn);
+    controls.appendChild(resetBtn);
 
     previewArea.insertBefore(controls, previewArea.firstChild);
 
     let currentZoom = 100;
     const page = getById('a4Page');
 
-    getById('zoomIn')?.addEventListener('click', () => {
-        currentZoom = Math.min(150, currentZoom + 10);
-        applyZoom();
-    });
+    /**
+     * Calculate optimal zoom to fit page in view
+     */
+    function calculateFitZoom() {
+        const previewArea = getById('previewArea');
+        const page = getById('a4Page');
+        if (!previewArea || !page) return 100;
 
-    getById('zoomOut')?.addEventListener('click', () => {
-        currentZoom = Math.max(50, currentZoom - 10);
-        applyZoom();
-    });
+        // Get available space (subtract padding and controls height)
+        const controlsHeight = 50; // Approximate height of zoom controls
+        const padding = 80; // 40px padding on each side
+        const availableWidth = previewArea.clientWidth - padding;
+        const availableHeight = previewArea.clientHeight - padding - controlsHeight;
 
-    getById('zoomReset')?.addEventListener('click', () => {
-        currentZoom = 100;
-        applyZoom();
-    });
+        // Get page dimensions (reset transform to get actual size)
+        const currentTransform = page.style.transform;
+        page.style.transform = 'none';
+        const pageWidth = page.offsetWidth;
+        const pageHeight = page.offsetHeight;
+        page.style.transform = currentTransform;
+
+        if (pageWidth === 0 || pageHeight === 0) return 100;
+
+        // Calculate scale to fit both width and height
+        const scaleX = availableWidth / pageWidth;
+        const scaleY = availableHeight / pageHeight;
+
+        // Use the smaller scale to ensure it fits completely
+        const fitScale = Math.min(scaleX, scaleY);
+
+        // Convert to percentage and round down to nearest 5%
+        return Math.floor(fitScale * 100 / 5) * 5;
+    }
 
     function applyZoom() {
         if (page) {
@@ -610,6 +656,47 @@ function initZoomControls() {
             levelDisplay.textContent = `${currentZoom}%`;
         }
     }
+
+    function fitToView() {
+        currentZoom = calculateFitZoom();
+        // Clamp to reasonable range
+        currentZoom = Math.max(30, Math.min(150, currentZoom));
+        applyZoom();
+    }
+
+    // Event listeners
+    getById('zoomFit')?.addEventListener('click', fitToView);
+
+    getById('zoomIn')?.addEventListener('click', () => {
+        currentZoom = Math.min(150, currentZoom + 10);
+        applyZoom();
+    });
+
+    getById('zoomOut')?.addEventListener('click', () => {
+        currentZoom = Math.max(30, currentZoom - 10);
+        applyZoom();
+    });
+
+    getById('zoomReset')?.addEventListener('click', () => {
+        currentZoom = 100;
+        applyZoom();
+    });
+
+    // Recalculate fit zoom on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            // Only auto-adjust if currently in "fit" mode (check if zoom matches calculated fit)
+            const fitZoom = calculateFitZoom();
+            if (Math.abs(currentZoom - fitZoom) < 10) {
+                fitToView();
+            }
+        }, 200);
+    });
+
+    // Apply fit zoom on initial load (default behavior)
+    setTimeout(fitToView, 100);
 }
 
 // ============================================
@@ -625,11 +712,20 @@ function initOffersDashboard() {
         className: 'btn btn-secondary beta-feature',
         title: 'All Offers Dashboard'
     });
-    dashboardBtn.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-        </svg>
-    `;
+
+    // Create SVG icon using DOM methods
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'w-5 h-5');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('d', 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z');
+    svg.appendChild(path);
+    dashboardBtn.appendChild(svg);
 
     actionButtons.insertBefore(dashboardBtn, actionButtons.firstChild);
 
@@ -647,32 +743,47 @@ function createDashboardModal() {
         className: 'modal hidden beta-feature'
     });
 
-    modal.innerHTML = `
-        <div class="modal-backdrop"></div>
-        <div class="modal-content modal-lg">
-            <div class="modal-header">
-                <h3>All Offers Dashboard</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="dashboard-toolbar">
-                    <input type="text" id="dashboardSearch" class="input-field" placeholder="Search offers...">
-                    <button id="newOfferBtn" class="btn btn-primary btn-sm">+ New Offer</button>
-                </div>
-                <div id="dashboardGrid" class="dashboard-grid">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-        </div>
-    `;
+    // Build modal structure using DOM methods
+    const backdrop = createElement('div', { className: 'modal-backdrop' });
+    const content = createElement('div', { className: 'modal-content modal-lg' });
+
+    const header = createElement('div', { className: 'modal-header' });
+    const title = createElement('h3');
+    title.textContent = 'All Offers Dashboard';
+    const closeBtn = createElement('button', { className: 'modal-close' });
+    closeBtn.textContent = '×';
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const body = createElement('div', { className: 'modal-body' });
+    const toolbar = createElement('div', { className: 'dashboard-toolbar' });
+    const searchInput = createElement('input', {
+        type: 'text',
+        id: 'dashboardSearch',
+        className: 'input-field',
+        placeholder: 'Search offers...'
+    });
+    const newOfferBtn = createElement('button', { id: 'newOfferBtn', className: 'btn btn-primary btn-sm' });
+    newOfferBtn.textContent = '+ New Offer';
+    toolbar.appendChild(searchInput);
+    toolbar.appendChild(newOfferBtn);
+
+    const grid = createElement('div', { id: 'dashboardGrid', className: 'dashboard-grid' });
+
+    body.appendChild(toolbar);
+    body.appendChild(grid);
+    content.appendChild(header);
+    content.appendChild(body);
+    modal.appendChild(backdrop);
+    modal.appendChild(content);
 
     document.body.appendChild(modal);
 
     // Event listeners
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.add('hidden'));
-    modal.querySelector('.modal-backdrop').addEventListener('click', () => modal.classList.add('hidden'));
-    getById('dashboardSearch')?.addEventListener('input', (e) => filterDashboard(e.target.value));
-    getById('newOfferBtn')?.addEventListener('click', () => {
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    backdrop.addEventListener('click', () => modal.classList.add('hidden'));
+    searchInput.addEventListener('input', (e) => filterDashboard(e.target.value));
+    newOfferBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
         // Clear form for new offer
         document.dispatchEvent(new CustomEvent('clearForm'));
@@ -694,8 +805,8 @@ function renderDashboardGrid() {
     const templates = getTemplates();
     const currentOffer = getCurrentOffer();
 
-    // Clear grid using DOM to prevent XSS
-    grid.innerHTML = '';
+    // Clear grid
+    grid.textContent = '';
 
     // Current offer card - use DOM methods for XSS prevention
     const currentCard = createElement('div', { className: 'dashboard-card current' });
@@ -814,11 +925,16 @@ function initWhatsAppShare() {
         className: 'btn btn-whatsapp beta-feature',
         title: 'Share via WhatsApp'
     });
-    whatsappBtn.innerHTML = `
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-        </svg>
-    `;
+
+    // Create SVG icon using DOM methods
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'w-5 h-5');
+    svg.setAttribute('fill', 'currentColor');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z');
+    svg.appendChild(path);
+    whatsappBtn.appendChild(svg);
 
     // Insert after export button
     const exportBtn = getById('exportBtn');
@@ -881,7 +997,14 @@ function initPricePerSqft() {
         id: 'pricePerSqft',
         className: 'price-per-sqft beta-feature'
     });
-    display.innerHTML = '<span class="sqft-label">Price/Sq.Ft:</span> <span class="sqft-value">-</span>';
+
+    const label = createElement('span', { className: 'sqft-label' });
+    label.textContent = 'Price/Sq.Ft:';
+    const value = createElement('span', { className: 'sqft-value' });
+    value.textContent = '-';
+    display.appendChild(label);
+    display.appendChild(document.createTextNode(' '));
+    display.appendChild(value);
 
     container.appendChild(display);
 
@@ -923,24 +1046,44 @@ function initCalculators() {
         className: 'calculators-section beta-feature'
     });
 
-    section.innerHTML = `
-        <hr class="section-divider">
-        <h3 class="section-title">Quick Calculators</h3>
-        <div class="calculator-cards">
-            <div class="calc-card">
-                <span class="calc-label">ROI</span>
-                <span class="calc-value" id="roiValue">-</span>
-            </div>
-            <div class="calc-card">
-                <span class="calc-label">Commission (2%)</span>
-                <span class="calc-value" id="commissionValue">-</span>
-            </div>
-            <div class="calc-card">
-                <span class="calc-label">Profit</span>
-                <span class="calc-value" id="profitValue">-</span>
-            </div>
-        </div>
-    `;
+    // Build using DOM methods
+    const hr = createElement('hr', { className: 'section-divider' });
+    const title = createElement('h3', { className: 'section-title' });
+    title.textContent = 'Quick Calculators';
+
+    const cards = createElement('div', { className: 'calculator-cards' });
+
+    const roiCard = createElement('div', { className: 'calc-card' });
+    const roiLabel = createElement('span', { className: 'calc-label' });
+    roiLabel.textContent = 'ROI';
+    const roiValue = createElement('span', { className: 'calc-value', id: 'roiValue' });
+    roiValue.textContent = '-';
+    roiCard.appendChild(roiLabel);
+    roiCard.appendChild(roiValue);
+
+    const commCard = createElement('div', { className: 'calc-card' });
+    const commLabel = createElement('span', { className: 'calc-label' });
+    commLabel.textContent = 'Commission (2%)';
+    const commValue = createElement('span', { className: 'calc-value', id: 'commissionValue' });
+    commValue.textContent = '-';
+    commCard.appendChild(commLabel);
+    commCard.appendChild(commValue);
+
+    const profitCard = createElement('div', { className: 'calc-card' });
+    const profitLabel = createElement('span', { className: 'calc-label' });
+    profitLabel.textContent = 'Profit';
+    const profitValue = createElement('span', { className: 'calc-value', id: 'profitValue' });
+    profitValue.textContent = '-';
+    profitCard.appendChild(profitLabel);
+    profitCard.appendChild(profitValue);
+
+    cards.appendChild(roiCard);
+    cards.appendChild(commCard);
+    cards.appendChild(profitCard);
+
+    section.appendChild(hr);
+    section.appendChild(title);
+    section.appendChild(cards);
 
     // Insert before payment plan section
     const paymentSection = Array.from(document.querySelectorAll('h3.section-title')).find(h => h.textContent.includes('Payment'));
@@ -1003,32 +1146,27 @@ function initEnhancedExport() {
 
     exportOptions.dataset.betaEnhanced = 'true';
 
-    // Add new export options
-    const additionalOptions = `
-        <label class="export-option beta-feature">
-            <input type="radio" name="exportFormat" value="whatsapp">
-            <span class="option-label">
-                <strong>WhatsApp Text</strong>
-                <small>Copy formatted text for WhatsApp</small>
-            </span>
-        </label>
-        <label class="export-option beta-feature">
-            <input type="radio" name="exportFormat" value="email">
-            <span class="option-label">
-                <strong>Email Template</strong>
-                <small>Open in email client</small>
-            </span>
-        </label>
-        <label class="export-option beta-feature">
-            <input type="radio" name="exportFormat" value="clipboard">
-            <span class="option-label">
-                <strong>Copy to Clipboard</strong>
-                <small>Copy formatted summary</small>
-            </span>
-        </label>
-    `;
+    // Add new export options using DOM methods
+    const options = [
+        { value: 'whatsapp', title: 'WhatsApp Text', desc: 'Copy formatted text for WhatsApp' },
+        { value: 'email', title: 'Email Template', desc: 'Open in email client' },
+        { value: 'clipboard', title: 'Copy to Clipboard', desc: 'Copy formatted summary' }
+    ];
 
-    exportOptions.insertAdjacentHTML('beforeend', additionalOptions);
+    options.forEach(opt => {
+        const label = createElement('label', { className: 'export-option beta-feature' });
+        const input = createElement('input', { type: 'radio', name: 'exportFormat', value: opt.value });
+        const span = createElement('span', { className: 'option-label' });
+        const strong = createElement('strong');
+        strong.textContent = opt.title;
+        const small = createElement('small');
+        small.textContent = opt.desc;
+        span.appendChild(strong);
+        span.appendChild(small);
+        label.appendChild(input);
+        label.appendChild(span);
+        exportOptions.appendChild(label);
+    });
 
     // Handle new export types
     const doExportBtn = getById('doExportBtn');
@@ -1175,7 +1313,7 @@ function initTooltips() {
                 className: 'tooltip-icon beta-feature',
                 title: text
             });
-            icon.innerHTML = ' ⓘ';
+            icon.textContent = ' ⓘ';
             label.appendChild(icon);
         }
     });

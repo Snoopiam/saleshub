@@ -172,9 +172,9 @@ async function exportLegacyPDF(filename) {
             .set({
                 margin: 0,
                 filename: `${filename}.pdf`,
-                image: { type: 'png', quality: 1.0 },
+                image: { type: 'jpeg', quality: 0.92 },
                 html2canvas: {
-                    scale: 4,
+                    scale: 3,
                     useCORS: true,
                     allowTaint: true,
                     backgroundColor: '#ffffff',
@@ -184,7 +184,7 @@ async function exportLegacyPDF(filename) {
                     unit: 'mm',
                     format: 'a4',
                     orientation: isPortrait ? 'portrait' : 'landscape',
-                    compress: false
+                    compress: true
                 },
                 pagebreak: { mode: ['avoid-all'] }
             })
