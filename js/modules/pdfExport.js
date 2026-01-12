@@ -45,8 +45,60 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = PDF_TIMEOUT_MS) {
 }
 
 /**
+ * Convert image URL to base64 data URL
+ * @param {string} url - Image URL (relative or absolute)
+ * @returns {Promise<string>} Base64 data URL
+ */
+async function urlToBase64(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Failed to convert image to base64'));
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('[PDF Export] Could not convert URL to base64:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Get logo from DOM element if available
+ * Handles both data URLs and static file paths
+ * @returns {Promise<string|null>} Base64 data URL or null
+ */
+async function getLogoFromDOM() {
+  const logoImg = document.querySelector('#logoImg');
+  if (!logoImg) return null;
+
+  const src = logoImg.getAttribute('src');
+  if (!src) return null;
+
+  // If it's already a data URL, use it directly
+  if (src.startsWith('data:image')) {
+    console.log('[PDF Export] Using logo from DOM (data URL)');
+    return src;
+  }
+
+  // If it's a file path, fetch and convert to base64
+  if (src.startsWith('assets/') || src.startsWith('/') || src.startsWith('http')) {
+    console.log('[PDF Export] Converting logo from file path:', src);
+    const base64 = await urlToBase64(src);
+    if (base64) {
+      console.log('[PDF Export] Logo converted to base64 successfully');
+      return base64;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get original quality images for PDF export
- * Uses IndexedDB for persistent storage, falls back to window.originalImages or localStorage
+ * Uses IndexedDB for persistent storage, falls back to window.originalImages, localStorage, or DOM
  * @param {Object} data - Offer data with compressed images
  * @param {Object} branding - Branding with compressed logo
  * @returns {Promise<{pdfData: Object, pdfBranding: Object}>}
@@ -73,21 +125,34 @@ async function getOriginalImagesForPDF(data, branding) {
     console.warn('[PDF Export] Could not get original floor plan:', error.message);
   }
 
-  // Try to get original logo from IndexedDB (persistent)
+  // Try to get original logo from multiple sources
   try {
+    // 1. Try IndexedDB first (original quality, persistent)
     const logoBase64 = await getImageAsBase64('logo');
     if (logoBase64) {
       console.log('[PDF Export] Using original quality logo from IndexedDB');
       pdfBranding.logo = logoBase64;
-    } else if (window.originalImages?.logo) {
-      // Fallback to memory if IndexedDB empty
+    }
+    // 2. Try memory (original quality, session only)
+    else if (window.originalImages?.logo) {
       console.log('[PDF Export] Using original quality logo from memory');
       pdfBranding.logo = await fileToBase64(window.originalImages.logo);
-    } else {
+    }
+    // 3. Try localStorage (compressed)
+    else if (pdfBranding.logo) {
       console.log('[PDF Export] Using compressed logo from localStorage');
     }
+    // 4. Try DOM element (static file or data URL)
+    else {
+      const domLogo = await getLogoFromDOM();
+      if (domLogo) {
+        pdfBranding.logo = domLogo;
+      } else {
+        console.log('[PDF Export] No logo found in any source');
+      }
+    }
   } catch (error) {
-    console.warn('[PDF Export] Could not get original logo:', error.message);
+    console.warn('[PDF Export] Could not get logo:', error.message);
   }
 
   return { pdfData, pdfBranding };
@@ -111,6 +176,13 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
 
     // Get original quality images from IndexedDB for PDF
     const { pdfData, pdfBranding } = await getOriginalImagesForPDF(data, branding);
+
+    // Debug log to verify branding
+    console.log('[PDF Export] Branding data:', {
+      hasLogo: !!pdfBranding.logo,
+      logoLength: pdfBranding.logo?.length || 0,
+      createdBy: pdfBranding.createdBy || '(empty)'
+    });
 
     const response = await fetchWithTimeout(`${API_BASE}/pdf/generate`, {
       method: 'POST',
@@ -195,14 +267,24 @@ export async function checkBackendHealth() {
 }
 
 /**
- * Get current branding from storage
+ * Get current branding from storage and DOM
+ * Reads from localStorage, but falls back to DOM for createdBy text
  */
 export function getCurrentBranding() {
+  let branding = {
+    companyName: 'Kennedy Property',
+    primaryColor: '#62c6c1',
+    logo: '',
+    footerText: 'SALE OFFER',
+    createdBy: '',
+    labels: {}
+  };
+
   try {
     const stored = localStorage.getItem('salesOfferApp');
     if (stored) {
       const state = JSON.parse(stored);
-      return {
+      branding = {
         companyName: state.branding?.companyName || 'Kennedy Property',
         primaryColor: state.branding?.primaryColor || '#62c6c1',
         logo: state.branding?.logo || '',
@@ -212,17 +294,22 @@ export function getCurrentBranding() {
       };
     }
   } catch (e) {
-    console.warn('[PDF Export] Could not read branding:', e);
+    console.warn('[PDF Export] Could not read branding from storage:', e);
   }
 
-  return {
-    companyName: 'Kennedy Property',
-    primaryColor: '#62c6c1',
-    logo: '',
-    footerText: 'SALE OFFER',
-    createdBy: '',
-    labels: {}
-  };
+  // If createdBy is empty, read from DOM (the hardcoded text in index.html)
+  if (!branding.createdBy) {
+    const createdByElement = document.querySelector('.created-by-footer');
+    if (createdByElement) {
+      const text = createdByElement.textContent?.trim() || '';
+      if (text) {
+        branding.createdBy = text;
+        console.log('[PDF Export] Read createdBy from DOM:', text);
+      }
+    }
+  }
+
+  return branding;
 }
 
 /**
