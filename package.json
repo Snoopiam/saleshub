@@ -9,7 +9,8 @@
     "watch:css": "tailwindcss -i ./css/tailwind-source.css -o ./css/tailwind.css --watch",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint js/ backend/src/"
+    "lint": "eslint js/ backend/src/",
+    "setup:hooks": "node scripts/setup-hooks.js"
   },
   "dependencies": {
     "compression": "^1.8.1",

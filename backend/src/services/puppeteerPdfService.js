@@ -12,6 +12,7 @@
  * - C-02: Added XSS sanitization for all user data
  * - H-04: Improved page close error handling with failure tracking
  * - H-09: Increased font loading timeout to 20 seconds
+ * - L-03: Cache fonts locally to avoid external dependencies
  */
 
 const puppeteer = require('puppeteer');
@@ -33,6 +34,9 @@ const FONT_LOADING_TIMEOUT_MS = 20000;
 
 // H-04: Track page close failures for browser restart decision
 const MAX_PAGE_CLOSE_FAILURES = 3;
+
+// L-03: Local font files path
+const FONTS_DIR = path.join(__dirname, '../../../assets/fonts');
 
 /**
  * C-02: HTML escape function to prevent XSS
@@ -56,6 +60,94 @@ class PuppeteerPdfService {
     this.browser = null;
     this.browserLock = Promise.resolve(); // Mutex for browser access
     this.pageCloseFailures = 0; // H-04: Track consecutive page close failures
+    this.fontCache = null; // L-03: Cached font data URIs
+  }
+
+  /**
+   * L-03: Load local fonts and convert to base64 data URIs
+   * Caches fonts in memory to avoid repeated file reads
+   */
+  async loadFonts() {
+    if (this.fontCache) {
+      return this.fontCache;
+    }
+
+    const fontFiles = {
+      regular: 'Montserrat-Regular.ttf',
+      semibold: 'Montserrat-SemiBold.ttf',
+      bold: 'Montserrat-Bold.ttf',
+      extrabold: 'Montserrat-ExtraBold.ttf'
+    };
+
+    try {
+      const fonts = {};
+      for (const [weight, filename] of Object.entries(fontFiles)) {
+        const fontPath = path.join(FONTS_DIR, filename);
+        try {
+          const fontData = await fs.readFile(fontPath);
+          fonts[weight] = `data:font/truetype;base64,${fontData.toString('base64')}`;
+        } catch (err) {
+          console.warn(`[Puppeteer] Could not load font ${filename}: ${err.message}`);
+          fonts[weight] = null;
+        }
+      }
+
+      this.fontCache = fonts;
+      console.log('[Puppeteer] Local fonts loaded successfully');
+      return fonts;
+    } catch (error) {
+      console.error('[Puppeteer] Failed to load fonts:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * L-03: Generate @font-face CSS for local fonts
+   * Falls back to Google Fonts if local fonts unavailable
+   */
+  getFontFaceCSS(fonts) {
+    if (!fonts || !fonts.regular) {
+      // Fallback to Google Fonts if local fonts not available
+      return `<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">`;
+    }
+
+    return `<style>
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(${fonts.regular}) format('truetype');
+    }
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url(${fonts.semibold}) format('truetype');
+    }
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url(${fonts.bold}) format('truetype');
+    }
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 800;
+      font-display: swap;
+      src: url(${fonts.extrabold}) format('truetype');
+    }
+    @font-face {
+      font-family: 'Montserrat';
+      font-style: normal;
+      font-weight: 900;
+      font-display: swap;
+      src: url(${fonts.extrabold}) format('truetype');
+    }
+    </style>`;
   }
 
   /**
@@ -188,11 +280,14 @@ class PuppeteerPdfService {
     const browser = await this.getBrowser();
     let page;
 
+    // L-03: Load fonts before generating HTML
+    const fonts = await this.loadFonts();
+
     try {
       page = await browser.newPage();
 
       // Generate HTML from template (with XSS protection)
-      const html = this.generateHTML(data, branding, template);
+      const html = this.generateHTML(data, branding, template, fonts);
 
       // Set content with networkidle0 for complete resource loading
       await page.setContent(html, {
@@ -255,14 +350,18 @@ class PuppeteerPdfService {
    * Generate HTML that matches the live preview
    * CSS synchronized with frontend preview.css and landscape.css
    * C-02: All user data is escaped to prevent XSS
+   * L-03: Uses local fonts when available
    */
-  generateHTML(data, branding, template) {
+  generateHTML(data, branding, template, fonts = null) {
     const primaryColor = escapeHtml(branding.primaryColor) || '#62c6c1';
     const companyName = escapeHtml(branding.companyName) || 'Kennedy Property';
     const footerText = escapeHtml(branding.footerText) || 'SALE OFFER';
     const createdBy = escapeHtml(branding.createdBy) || '';
     const isPortrait = template === 'portrait';
     const isOffPlan = data.category !== 'ready';
+
+    // L-03: Get font CSS (local or Google Fonts fallback)
+    const fontCSS = this.getFontFaceCSS(fonts);
 
     // Format currency helper (with escaping)
     const formatCurrency = (value) => {
@@ -329,8 +428,8 @@ class PuppeteerPdfService {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${safeData.projectName || 'Sales Offer'}</title>
-  <!-- SYNCED: Font weights match frontend index.html -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <!-- L-03: Local fonts (or Google Fonts fallback) -->
+  ${fontCSS}
   <style>
     * {
       margin: 0;
