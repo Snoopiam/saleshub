@@ -8,6 +8,9 @@
  * - IndexedDB: Original quality images (persistent, large capacity)
  * - localStorage: Compressed previews (quick access, limited to 5MB)
  * - window.originalImages: Runtime cache (fast access, lost on refresh)
+ *
+ * FIXES APPLIED:
+ * - H-06: Added transaction.onerror and oncomplete handlers
  */
 
 const DB_NAME = 'SalesHubImages';
@@ -36,6 +39,12 @@ function openDB() {
 
         request.onsuccess = () => {
             db = request.result;
+
+            // H-06: Handle database errors at connection level
+            db.onerror = (event) => {
+                console.error('[ImageStorage] Database error:', event.target.error);
+            };
+
             console.log('[ImageStorage] IndexedDB connected');
             resolve(db);
         };
@@ -52,6 +61,7 @@ function openDB() {
 
 /**
  * Save an image to IndexedDB
+ * H-06: Added transaction error and complete handlers
  * @param {string} key - Image key ('floorPlan' or 'logo')
  * @param {File|Blob} file - The image file to store
  * @returns {Promise<void>}
@@ -78,23 +88,32 @@ export async function saveImage(key, file) {
 
             const request = store.put(record);
 
-            request.onsuccess = () => {
+            // H-06: Transaction-level error handler
+            transaction.onerror = (event) => {
+                console.error(`[ImageStorage] Transaction error saving ${key}:`, event.target.error);
+                reject(event.target.error);
+            };
+
+            // H-06: Transaction-level complete handler
+            transaction.oncomplete = () => {
                 console.log(`[ImageStorage] Saved ${key} (${(file.size / 1024).toFixed(1)}KB)`);
                 resolve();
             };
 
             request.onerror = () => {
-                console.error(`[ImageStorage] Failed to save ${key}:`, request.error);
-                reject(request.error);
+                console.error(`[ImageStorage] Request error saving ${key}:`, request.error);
+                // Let transaction.onerror handle the rejection
             };
         });
     } catch (error) {
         console.error(`[ImageStorage] Error saving ${key}:`, error);
+        throw error;
     }
 }
 
 /**
  * Load an image from IndexedDB
+ * H-06: Added transaction error and complete handlers
  * @param {string} key - Image key ('floorPlan' or 'logo')
  * @returns {Promise<File|null>}
  */
@@ -107,21 +126,33 @@ export async function loadImage(key) {
             const store = transaction.objectStore(STORE_NAME);
             const request = store.get(key);
 
+            let result = null;
+
             request.onsuccess = () => {
                 const record = request.result;
                 if (record && record.blob) {
                     // Convert Blob back to File with original metadata
-                    const file = new File([record.blob], record.name, { type: record.type });
-                    console.log(`[ImageStorage] Loaded ${key} (${(file.size / 1024).toFixed(1)}KB)`);
-                    resolve(file);
-                } else {
-                    resolve(null);
+                    result = new File([record.blob], record.name, { type: record.type });
                 }
             };
 
+            // H-06: Transaction-level error handler
+            transaction.onerror = (event) => {
+                console.error(`[ImageStorage] Transaction error loading ${key}:`, event.target.error);
+                reject(event.target.error);
+            };
+
+            // H-06: Transaction-level complete handler
+            transaction.oncomplete = () => {
+                if (result) {
+                    console.log(`[ImageStorage] Loaded ${key} (${(result.size / 1024).toFixed(1)}KB)`);
+                }
+                resolve(result);
+            };
+
             request.onerror = () => {
-                console.error(`[ImageStorage] Failed to load ${key}:`, request.error);
-                reject(request.error);
+                console.error(`[ImageStorage] Request error loading ${key}:`, request.error);
+                // Let transaction.onerror handle the rejection
             };
         });
     } catch (error) {
@@ -132,6 +163,7 @@ export async function loadImage(key) {
 
 /**
  * Delete an image from IndexedDB
+ * H-06: Added transaction error and complete handlers
  * @param {string} key - Image key ('floorPlan' or 'logo')
  * @returns {Promise<void>}
  */
@@ -144,23 +176,32 @@ export async function deleteImage(key) {
             const store = transaction.objectStore(STORE_NAME);
             const request = store.delete(key);
 
-            request.onsuccess = () => {
+            // H-06: Transaction-level error handler
+            transaction.onerror = (event) => {
+                console.error(`[ImageStorage] Transaction error deleting ${key}:`, event.target.error);
+                reject(event.target.error);
+            };
+
+            // H-06: Transaction-level complete handler
+            transaction.oncomplete = () => {
                 console.log(`[ImageStorage] Deleted ${key}`);
                 resolve();
             };
 
             request.onerror = () => {
-                console.error(`[ImageStorage] Failed to delete ${key}:`, request.error);
-                reject(request.error);
+                console.error(`[ImageStorage] Request error deleting ${key}:`, request.error);
+                // Let transaction.onerror handle the rejection
             };
         });
     } catch (error) {
         console.error(`[ImageStorage] Error deleting ${key}:`, error);
+        throw error;
     }
 }
 
 /**
  * Clear all images from IndexedDB
+ * H-06: Added transaction error and complete handlers
  * @returns {Promise<void>}
  */
 export async function clearAllImages() {
@@ -172,18 +213,26 @@ export async function clearAllImages() {
             const store = transaction.objectStore(STORE_NAME);
             const request = store.clear();
 
-            request.onsuccess = () => {
+            // H-06: Transaction-level error handler
+            transaction.onerror = (event) => {
+                console.error('[ImageStorage] Transaction error clearing:', event.target.error);
+                reject(event.target.error);
+            };
+
+            // H-06: Transaction-level complete handler
+            transaction.oncomplete = () => {
                 console.log('[ImageStorage] Cleared all images');
                 resolve();
             };
 
             request.onerror = () => {
-                console.error('[ImageStorage] Failed to clear:', request.error);
-                reject(request.error);
+                console.error('[ImageStorage] Request error clearing:', request.error);
+                // Let transaction.onerror handle the rejection
             };
         });
     } catch (error) {
         console.error('[ImageStorage] Error clearing:', error);
+        throw error;
     }
 }
 

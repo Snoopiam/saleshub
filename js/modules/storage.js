@@ -6,12 +6,15 @@
  * PURPOSE: Manages all localStorage operations for persisting app state.
  *          Handles auto-save, templates, and branding storage.
  *
+ * SECURITY (C-09): Sensitive financial data is encrypted using AES-GCM
+ *          before storage. See js/utils/crypto.js for implementation.
+ *
  * STORAGE KEY: 'salesOfferApp' (single key containing all app data)
  *
  * DATA STRUCTURE:
  * {
  *   schemaVersion: 1,           // For future migrations
- *   currentOffer: {...},        // Current form data
+ *   currentOffer: {...},        // Current form data (sensitive fields encrypted)
  *   branding: {...},            // Company branding settings
  *   templates: [...],           // Saved offer templates
  *   settings: {...}             // App settings
@@ -21,6 +24,8 @@
  * - loadState(): Load entire app state from localStorage
  * - saveCurrentOffer(data): Save current offer form data
  * - getCurrentOffer(): Get current offer data
+ * - getCurrentOfferAsync(): Get current offer with decryption (recommended)
+ * - saveCurrentOfferAsync(data): Save current offer with encryption (recommended)
  * - getBranding(): Get branding settings
  * - saveBranding(data): Save branding settings
  * - getTemplates(): Get saved templates list
@@ -35,6 +40,11 @@
  */
 
 import { generateId, toast } from '../utils/helpers.js';
+import {
+    encryptOffer,
+    decryptOffer,
+    isCryptoAvailable
+} from '../utils/crypto.js';
 
 /* ============================================================================
    CONSTANTS
@@ -67,7 +77,7 @@ const STORAGE_KEY = 'salesOfferApp';
  * - Version 2: { offers: [{...}] }  // Changed to array
  * - Migration: if (state._version === 1) { ... convert ... }
  */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;  // Bumped to 2 for encryption support
 
 /**
  * MAX_IMAGE_SIZE
@@ -125,7 +135,7 @@ const defaultState = {
         plotSizeOnly: '',      // Raw land size (Sq.Ft)
         allowedBuild: '',      // Maximum buildable area (Sq.Ft)
 
-        // === FINANCIAL DATA ===
+        // === FINANCIAL DATA (Encrypted in storage) ===
         originalPrice: '',     // Developer's original price (AED)
         sellingPrice: '',      // Resale price / asking price (AED)
         resaleClausePercent: '',   // Min % that must be paid before resale (e.g., 40)
@@ -206,7 +216,14 @@ const defaultState = {
        --------------------------------
        Schema version for future data migrations.
        -------------------------------- */
-    _version: SCHEMA_VERSION
+    _version: SCHEMA_VERSION,
+
+    /* --------------------------------
+       ENCRYPTION FLAG
+       --------------------------------
+       Indicates sensitive data is encrypted.
+       -------------------------------- */
+    _encrypted: false
 };
 
 /* ============================================================================
@@ -219,28 +236,10 @@ const defaultState = {
 /**
  * loadState()
  * ===========
- * Retrieves the entire app state from localStorage.
+ * Retrieves the entire app state from localStorage (synchronous).
  *
- * WHAT IT RETURNS:
- * The complete state object containing:
- * - currentOffer: Form data
- * - templates: Saved configurations
- * - branding: Company settings
- * - settings: App preferences
- * - etc.
- *
- * WHY DEEP MERGE:
- * When we add new fields to defaultState (e.g., new feature),
- * existing users won't have those fields in their saved data.
- * deepMerge ensures all expected fields exist:
- *
- *   defaultState: { a: 1, b: 2, c: 3 }  // New field 'c' added
- *   savedData:    { a: 5, b: 6 }        // Old data without 'c'
- *   result:       { a: 5, b: 6, c: 3 }  // User values + new defaults
- *
- * GRACEFUL DEGRADATION:
- * If localStorage read fails (corrupted data, browser restrictions),
- * returns defaultState so the app still works.
+ * NOTE: This returns raw data which may have encrypted fields.
+ * For decrypted offer data, use getCurrentOfferAsync() instead.
  *
  * @returns {Object} The complete app state
  */
@@ -267,34 +266,40 @@ export function loadState() {
 }
 
 /**
+ * loadStateAsync()
+ * ================
+ * Retrieves the entire app state with decrypted sensitive data.
+ *
+ * This is the recommended way to load state when you need to
+ * access financial data (prices, fees, amounts).
+ *
+ * @returns {Promise<Object>} The complete app state with decrypted offer
+ */
+export async function loadStateAsync() {
+    const state = loadState();
+
+    // Decrypt offer data if crypto is available
+    if (state._encrypted && state.currentOffer) {
+        state.currentOffer = await decryptOffer(state.currentOffer);
+    }
+
+    // Decrypt template offer data
+    if (state.templates && Array.isArray(state.templates)) {
+        for (let i = 0; i < state.templates.length; i++) {
+            if (state.templates[i].data) {
+                state.templates[i].data = await decryptOffer(state.templates[i].data);
+            }
+        }
+    }
+
+    return state;
+}
+
+/**
  * saveState(state)
  * ================
  * Saves the entire app state to localStorage with graceful degradation.
- *
- * QUOTA HANDLING:
- * localStorage has a ~5MB limit (varies by browser).
- * When quota is exceeded, this function tries progressively more
- * aggressive strategies to save the data:
- *
- * 1. COMPRESS IMAGES (first attempt)
- *    - Reduce quality of large base64 images
- *    - Floor plan, logo, template images
- *    - User sees: "Storage space low. Images compressed."
- *
- * 2. REMOVE IMAGES (second attempt)
- *    - Strip all image data entirely
- *    - Preserves all other data (offers, settings, etc.)
- *    - User sees: "Storage full. Images removed."
- *
- * 3. CRITICAL FAILURE (last resort)
- *    - Even minimal data won't fit
- *    - User sees: "CRITICAL: Cannot save. Export immediately!"
- *    - Returns false so caller knows save failed
- *
- * WHY THIS APPROACH:
- * Data loss is the worst outcome. By progressively degrading,
- * we preserve the most important data (form values, settings)
- * even when images can't be saved.
+ * Does NOT encrypt - use saveStateAsync for encrypted saves.
  *
  * @param {Object} state - The complete state to save
  * @returns {boolean} True if save succeeded, false if critical failure
@@ -351,6 +356,36 @@ export function saveState(state) {
         toast('Failed to save data', 'error');
         return false;
     }
+}
+
+/**
+ * saveStateAsync(state)
+ * =====================
+ * Saves the entire app state with encrypted sensitive data.
+ *
+ * This is the recommended way to save state when you have
+ * modified financial data (prices, fees, amounts).
+ *
+ * @param {Object} state - The complete state to save
+ * @returns {Promise<boolean>} True if save succeeded
+ */
+export async function saveStateAsync(state) {
+    // Encrypt offer data if crypto is available
+    if (isCryptoAvailable() && state.currentOffer) {
+        state.currentOffer = await encryptOffer(state.currentOffer);
+        state._encrypted = true;
+    }
+
+    // Encrypt template offer data
+    if (isCryptoAvailable() && state.templates && Array.isArray(state.templates)) {
+        for (let i = 0; i < state.templates.length; i++) {
+            if (state.templates[i].data) {
+                state.templates[i].data = await encryptOffer(state.templates[i].data);
+            }
+        }
+    }
+
+    return saveState(state);
 }
 
 /* ============================================================================
@@ -567,9 +602,10 @@ export function getStorageUsage() {
 /**
  * getCurrentOffer()
  * =================
- * Returns the current offer form data.
+ * Returns the current offer form data (synchronous).
  *
- * USAGE: Get current values to display, calculate, or export.
+ * NOTE: Financial fields may be encrypted. For decrypted data,
+ * use getCurrentOfferAsync() instead.
  *
  * @returns {Object} Current offer data (projectName, prices, areas, etc.)
  */
@@ -579,9 +615,27 @@ export function getCurrentOffer() {
 }
 
 /**
+ * getCurrentOfferAsync()
+ * ======================
+ * Returns the current offer form data with decrypted financial fields.
+ *
+ * RECOMMENDED: Use this function when you need to read financial data
+ * (prices, fees, amounts) to ensure they are properly decrypted.
+ *
+ * @returns {Promise<Object>} Current offer data with decrypted values
+ */
+export async function getCurrentOfferAsync() {
+    const state = await loadStateAsync();
+    return state.currentOffer;
+}
+
+/**
  * saveCurrentOffer(offer)
  * =======================
- * Saves current offer data, merging with existing values.
+ * Saves current offer data, merging with existing values (synchronous).
+ *
+ * NOTE: For encrypted storage of financial data, use
+ * saveCurrentOfferAsync() instead.
  *
  * MERGE BEHAVIOR:
  * Only overwrites the fields you pass. Other fields are preserved.
@@ -598,6 +652,24 @@ export function saveCurrentOffer(offer) {
     // Spread operator merges: existing values + new values (new wins on conflict)
     state.currentOffer = { ...state.currentOffer, ...offer };
     saveState(state);
+}
+
+/**
+ * saveCurrentOfferAsync(offer)
+ * ============================
+ * Saves current offer data with encrypted financial fields.
+ *
+ * RECOMMENDED: Use this function when saving financial data
+ * (prices, fees, amounts) to ensure they are properly encrypted.
+ *
+ * @param {Object} offer - Partial offer data to merge
+ * @returns {Promise<boolean>} True if save succeeded
+ */
+export async function saveCurrentOfferAsync(offer) {
+    const state = await loadStateAsync();
+    // Spread operator merges: existing values + new values (new wins on conflict)
+    state.currentOffer = { ...state.currentOffer, ...offer };
+    return await saveStateAsync(state);
 }
 
 /* ============================================================================
@@ -787,7 +859,7 @@ export function getTemplates() {
 /**
  * saveTemplate(name, offer, branding)
  * ====================================
- * Creates a new template from current offer data.
+ * Creates a new template from current offer data (synchronous).
  *
  * WHAT'S SAVED:
  * - name: User-provided template name
@@ -824,9 +896,43 @@ export function saveTemplate(name, offer, branding = null) {
 }
 
 /**
+ * saveTemplateAsync(name, offer, branding)
+ * ========================================
+ * Creates a new template with encrypted offer data.
+ *
+ * RECOMMENDED: Use this when saving templates with financial data.
+ *
+ * @param {string} name - User-friendly template name
+ * @param {Object} offer - Offer data to save
+ * @param {Object} branding - Branding data (optional)
+ * @returns {Promise<Object>} The created template object
+ */
+export async function saveTemplateAsync(name, offer, branding = null) {
+    const state = await loadStateAsync();
+
+    // Create template object with unique ID and timestamp
+    const template = {
+        id: generateId(),
+        name,
+        createdAt: new Date().toISOString(),
+        data: { ...offer },
+        branding: branding || state.branding
+    };
+
+    // Add to templates array
+    state.templates.push(template);
+
+    // Save with encryption
+    await saveStateAsync(state);
+    toast(`Template "${name}" saved`, 'success');
+
+    return template;
+}
+
+/**
  * loadTemplate(templateId)
  * ========================
- * Retrieves a template by its ID.
+ * Retrieves a template by its ID (synchronous).
  *
  * USAGE:
  *   const template = loadTemplate('abc123');
@@ -841,6 +947,21 @@ export function saveTemplate(name, offer, branding = null) {
 export function loadTemplate(templateId) {
     const state = loadState();
     // find() returns undefined if not found, || null makes it explicit
+    return state.templates.find(t => t.id === templateId) || null;
+}
+
+/**
+ * loadTemplateAsync(templateId)
+ * =============================
+ * Retrieves a template with decrypted offer data.
+ *
+ * RECOMMENDED: Use this when loading templates with financial data.
+ *
+ * @param {string} templateId - The template's unique ID
+ * @returns {Promise<Object|null>} Template object with decrypted data
+ */
+export async function loadTemplateAsync(templateId) {
+    const state = await loadStateAsync();
     return state.templates.find(t => t.id === templateId) || null;
 }
 
@@ -897,6 +1018,9 @@ export function clearAllData() {
         // Remove our storage key entirely
         localStorage.removeItem(STORAGE_KEY);
 
+        // Also remove encryption key for fresh start
+        localStorage.removeItem('salesOfferCryptoKey');
+
         toast('All data cleared', 'success');
 
         // Reload page to reset app to initial state
@@ -939,6 +1063,28 @@ export function exportOfferAsJSON() {
     };
 
     // JSON.stringify with null, 2 = pretty-print with 2-space indent
+    return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * exportOfferAsJSONAsync()
+ * ========================
+ * Creates a JSON string with decrypted data for export.
+ *
+ * RECOMMENDED: Use this for exports that need readable financial data.
+ *
+ * @returns {Promise<string>} Formatted JSON string with decrypted values
+ */
+export async function exportOfferAsJSONAsync() {
+    const state = await loadStateAsync();
+
+    const exportData = {
+        offer: state.currentOffer,
+        branding: state.branding,
+        labels: state.labels,
+        exportedAt: new Date().toISOString()
+    };
+
     return JSON.stringify(exportData, null, 2);
 }
 

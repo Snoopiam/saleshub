@@ -8,9 +8,12 @@
  * - Rows 26+: Payment Plan installments (columns A-D)
  *
  * Supports Off-Plan Resale and Ready Property categories
+ *
+ * FIXES APPLIED:
+ * - M-04: Added loading overlay during import
  */
 
-import { getById, setValue, toast, formatDate, excelDateToJS } from '../utils/helpers.js';
+import { getById, setValue, toast, formatDate, excelDateToJS, showLoading, hideLoading } from '../utils/helpers.js';
 import { setPaymentPlan, setPaymentPlanName } from './paymentPlan.js';
 import { runAllCalculations } from './calculator.js';
 
@@ -65,6 +68,7 @@ export function initExcel() {
 
 /**
  * Handle Excel file upload
+ * M-04: Uses loading overlay during processing
  * @param {Event} e - Change event
  */
 async function handleExcelUpload(e) {
@@ -87,7 +91,8 @@ async function handleExcelUpload(e) {
         return;
     }
 
-    toast('Processing Excel file...', 'info');
+    // M-04: Show loading overlay
+    showLoading('Importing Excel data...');
 
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -136,8 +141,18 @@ async function handleExcelUpload(e) {
             }
         } catch {
             toast('Error reading Excel file. Please check the format.', 'error');
+        } finally {
+            // M-04: Hide loading overlay
+            hideLoading();
         }
     };
+
+    reader.onerror = function() {
+        // M-04: Hide loading overlay on error
+        hideLoading();
+        toast('Error reading file.', 'error');
+    };
+
     reader.readAsArrayBuffer(file);
 
     // Reset input so same file can be uploaded again

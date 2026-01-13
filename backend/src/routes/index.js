@@ -14,6 +14,7 @@ const asyncHandler = (fn) => (req, res, next) =>
 // ===== PDF Generation =====
 router.post('/pdf/generate', asyncHandler(pdfController.generatePDF));
 router.post('/pdf/preview', asyncHandler(pdfController.generatePreview));
+router.get('/pdf/queue-status', pdfController.getQueueStatus); // M-10: Queue status endpoint
 
 // ===== Templates =====
 router.get('/templates', asyncHandler(templateController.listTemplates));

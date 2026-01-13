@@ -112,7 +112,7 @@ CSS VARIABLE NAMING:
    ============================================ */
 :root {
     /* Brand Colors */
-    --primary-color: #62c6c1;
+    --primary-color: #03C3CC;
     --primary-hover: #4aa8a4;
 
     /* Background Colors (Dark Theme) */
@@ -133,7 +133,7 @@ CSS VARIABLE NAMING:
 
     /* Text Colors (Light/Document Theme) */
     --text-dark: #1f2937;                   /* Near-black for document text */
-    --text-gray: #4b5563;                   /* Medium-dark gray */
+    --text-gray: #4b5563;                   /* WCAG 5.9:1 on white - AA compliant */
     --text-gray-medium: #6b7280;            /* Medium gray - WCAG 5.0:1 */
     --text-emphasis: #111827;               /* Maximum emphasis */
 
@@ -1970,4 +1970,121 @@ select.input-field option {
     width: 12px;                           /* Reduced knob width */
     left: 2px;                             /* Maintain 2px padding */
     bottom: 2px;                           /* Maintain 2px padding */
+}
+
+/* ============================================
+   M-02: OFFLINE DETECTION BANNER
+   ============================================
+   Displays a warning banner when the browser
+   loses network connectivity. Uses online/offline
+   events in JavaScript to toggle visibility.
+   ============================================ */
+
+.offline-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background-color: #fef3c7;
+    border-bottom: 1px solid #f59e0b;
+    color: #92400e;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.offline-banner.hidden {
+    display: none;
+}
+
+.offline-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* Push content down when banner is visible */
+body:has(.offline-banner:not(.hidden)) #inputPanel,
+body:has(.offline-banner:not(.hidden)) #previewArea {
+    margin-top: 44px;
+}
+
+/* ============================================
+   M-04: LOADING OVERLAY & SPINNER
+   ============================================
+   Full-screen loading overlay with animated spinner.
+   Used during async operations like PDF generation,
+   image export, and Excel import.
+   ============================================ */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.loading-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #62c6c1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Button loading state */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
 }

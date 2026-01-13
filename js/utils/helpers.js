@@ -1258,3 +1258,81 @@ style.textContent = `
 // Inject the <style> element into the document <head>
 // This makes the animations available to any element using them
 document.head.appendChild(style);
+
+/* ============================================================================
+   SECTION 8: LOADING STATE UTILITIES (M-04)
+   ============================================================================
+   Functions for managing loading states during async operations.
+   Uses a full-screen overlay with spinner for major operations.
+   ============================================================================ */
+
+/**
+ * showLoading(message)
+ * ====================
+ * Display the loading overlay with a custom message.
+ * 
+ * @param {string} message - Text to display under the spinner
+ * 
+ * EXAMPLE:
+ * showLoading('Generating PDF...');
+ * await generatePDF();
+ * hideLoading();
+ */
+export function showLoading(message = 'Loading...') {
+    const overlay = getById('loadingOverlay');
+    const text = getById('loadingText');
+    
+    if (overlay) {
+        if (text) text.textContent = message;
+        overlay.setAttribute('aria-busy', 'true');
+        overlay.classList.add('visible');
+    }
+}
+
+/**
+ * hideLoading()
+ * =============
+ * Hide the loading overlay.
+ * Always call this in a finally block to ensure cleanup.
+ * 
+ * EXAMPLE:
+ * try {
+ *     showLoading('Processing...');
+ *     await doSomething();
+ * } finally {
+ *     hideLoading();
+ * }
+ */
+export function hideLoading() {
+    const overlay = getById('loadingOverlay');
+    
+    if (overlay) {
+        overlay.setAttribute('aria-busy', 'false');
+        overlay.classList.remove('visible');
+    }
+}
+
+/**
+ * withLoading(asyncFn, message)
+ * ============================
+ * Execute an async function with automatic loading state management.
+ * Shows loading before execution, hides after completion or error.
+ * 
+ * @param {Function} asyncFn - Async function to execute
+ * @param {string} message - Loading message to display
+ * @returns {Promise<any>} - Result from asyncFn
+ * 
+ * EXAMPLE:
+ * const result = await withLoading(
+ *     () => generatePDF(data),
+ *     'Generating PDF...'
+ * );
+ */
+export async function withLoading(asyncFn, message = 'Loading...') {
+    showLoading(message);
+    try {
+        return await asyncFn();
+    } finally {
+        hideLoading();
+    }
+}

@@ -6,9 +6,15 @@
  * - Original quality images stored in IndexedDB (survives page refresh)
  * - Compressed versions stored in localStorage (for preview/persistence)
  * - This module loads original images from IndexedDB for best PDF quality
+ *
+ * FIXES APPLIED:
+ * - H-05: Added user feedback for image conversion errors
+ * - H-07: Fixed URL object memory leak with try-finally
+ * - M-01: Added retry logic with exponential backoff
+ * - M-11: Added progress indicators during retries
  */
 
-import { fileToBase64 } from '../utils/helpers.js';
+import { fileToBase64, toast, showLoading } from '../utils/helpers.js';
 import { getImageAsBase64 } from './imageStorage.js';
 
 // API endpoint - relative path (same server serves frontend + API)
@@ -16,6 +22,10 @@ const API_BASE = '/api';
 
 // Default timeout for PDF generation (60 seconds)
 const PDF_TIMEOUT_MS = 60000;
+
+// M-01: Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
 
 /**
  * Fetch with timeout using AbortController
@@ -45,7 +55,79 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = PDF_TIMEOUT_MS) {
 }
 
 /**
+ * M-01: Fetch with retry and exponential backoff
+ * M-11: Updates loading indicator with progress during retries
+ * Retries on network errors and 5xx server errors
+ * @param {string} url - URL to fetch
+ * @param {Object} options - Fetch options
+ * @param {number} timeoutMs - Timeout per attempt in milliseconds
+ * @param {string} operationName - Name of operation for progress display
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(url, options = {}, timeoutMs = PDF_TIMEOUT_MS, operationName = 'Generating PDF') {
+  let lastError;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      // M-11: Update progress indicator on each attempt
+      if (attempt > 0) {
+        showLoading(`${operationName}... (Retry ${attempt}/${MAX_RETRIES - 1})`);
+      }
+
+      const response = await fetchWithTimeout(url, options, timeoutMs);
+
+      // Don't retry on client errors (4xx) - these are intentional
+      if (response.status >= 400 && response.status < 500) {
+        return response;
+      }
+
+      // Retry on server errors (5xx)
+      if (response.status >= 500) {
+        lastError = new Error(`Server error: ${response.status}`);
+        console.warn(`[PDF Export] Attempt ${attempt + 1}/${MAX_RETRIES} failed: ${lastError.message}`);
+
+        if (attempt < MAX_RETRIES - 1) {
+          const delay = RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+          console.log(`[PDF Export] Retrying in ${delay}ms...`);
+
+          // M-11: Show countdown during retry delay
+          showLoading(`Server busy. Retrying in ${Math.round(delay / 1000)}s...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return response; // Return last response on final attempt
+      }
+
+      // Success (2xx/3xx)
+      return response;
+
+    } catch (error) {
+      lastError = error;
+      console.warn(`[PDF Export] Attempt ${attempt + 1}/${MAX_RETRIES} failed: ${error.message}`);
+
+      // Don't retry on timeout errors (already took too long)
+      if (error.message.includes('timed out')) {
+        throw error;
+      }
+
+      // Retry on network errors
+      if (attempt < MAX_RETRIES - 1) {
+        const delay = RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+        console.log(`[PDF Export] Retrying in ${delay}ms...`);
+
+        // M-11: Show countdown during retry delay
+        showLoading(`Connection failed. Retrying in ${Math.round(delay / 1000)}s...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error('All retry attempts failed');
+}
+
+/**
  * Convert image URL to base64 data URL
+ * H-05: Shows toast warning on conversion failure
  * @param {string} url - Image URL (relative or absolute)
  * @returns {Promise<string>} Base64 data URL
  */
@@ -61,6 +143,8 @@ async function urlToBase64(url) {
     });
   } catch (error) {
     console.warn('[PDF Export] Could not convert URL to base64:', error.message);
+    // H-05: Show user feedback for image conversion errors
+    toast('Warning: Could not load image. PDF may be missing some images.', 'warning');
     return null;
   }
 }
@@ -98,12 +182,16 @@ async function getLogoFromDOM() {
 
 /**
  * Get original quality images for PDF export
+ * M-11: Shows progress during image loading
  * Uses IndexedDB for persistent storage, falls back to window.originalImages, localStorage, or DOM
  * @param {Object} data - Offer data with compressed images
  * @param {Object} branding - Branding with compressed logo
  * @returns {Promise<{pdfData: Object, pdfBranding: Object}>}
  */
 async function getOriginalImagesForPDF(data, branding) {
+  // M-11: Update progress
+  showLoading('Preparing images...');
+
   // Clone objects to avoid mutating originals
   const pdfData = { ...data };
   const pdfBranding = { ...branding };
@@ -123,6 +211,8 @@ async function getOriginalImagesForPDF(data, branding) {
     }
   } catch (error) {
     console.warn('[PDF Export] Could not get original floor plan:', error.message);
+    // H-05: Show user feedback
+    toast('Warning: Using compressed floor plan image.', 'warning');
   }
 
   // Try to get original logo from multiple sources
@@ -160,6 +250,8 @@ async function getOriginalImagesForPDF(data, branding) {
 
 /**
  * Generate PDF using Puppeteer backend
+ * M-01: Uses retry with exponential backoff for resilience
+ * M-11: Shows progress during generation
  * @param {Object} data - Offer data from getCurrentOffer()
  * @param {Object} branding - Branding settings
  * @param {string} template - Template type: 'landscape', 'portrait', 'minimal'
@@ -177,6 +269,9 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
     // Get original quality images from IndexedDB for PDF
     const { pdfData, pdfBranding } = await getOriginalImagesForPDF(data, branding);
 
+    // M-11: Update progress
+    showLoading('Sending to server...');
+
     // Debug log to verify branding
     console.log('[PDF Export] Branding data:', {
       hasLogo: !!pdfBranding.logo,
@@ -184,7 +279,9 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
       createdBy: pdfBranding.createdBy || '(empty)'
     });
 
-    const response = await fetchWithTimeout(`${API_BASE}/pdf/generate`, {
+    // M-01: Use fetchWithRetry for resilience
+    // M-11: Pass operation name for progress display
+    const response = await fetchWithRetry(`${API_BASE}/pdf/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -194,7 +291,7 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
         branding: pdfBranding,
         template: template
       })
-    }, PDF_TIMEOUT_MS);
+    }, PDF_TIMEOUT_MS, 'Generating PDF');
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -209,6 +306,9 @@ export async function generatePDF(data, branding = {}, template = 'landscape') {
 
       throw new Error(errorData.message || `Server error: ${response.status}`);
     }
+
+    // M-11: Update progress
+    showLoading('Downloading PDF...');
 
     // Validate response content type
     const contentType = response.headers.get('content-type');
@@ -313,17 +413,25 @@ export function getCurrentBranding() {
 }
 
 /**
- * Download blob as file
+ * H-07: Download blob as file with proper cleanup
+ * Wrapped in try-finally to ensure URL is always revoked
  */
 function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  let url = null;
+  try {
+    url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    // H-07: Always revoke URL to prevent memory leak
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  }
 }
 
 /**

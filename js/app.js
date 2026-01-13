@@ -43,6 +43,7 @@ async function init() {
     restoreLockStates();
     applyBranding();
     updatePreview();
+    setupOfflineDetection(); // M-02: Offline detection
 }
 
 function setupFormListeners() {
@@ -486,6 +487,30 @@ function handleLoadTemplate(templateId) {
     saveFormData();
     getById('saveTemplateModal')?.classList.add('hidden');
     toast(`Template "${template.name}" loaded`, 'success');
+}
+
+/**
+ * M-02: Setup offline detection
+ * Listens for online/offline events and shows/hides the offline banner
+ */
+function setupOfflineDetection() {
+    const banner = getById('offlineBanner');
+    if (!banner) return;
+
+    window.addEventListener('online', () => {
+        banner.classList.add('hidden');
+        toast('Connection restored', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+        banner.classList.remove('hidden');
+        toast('You are offline. Some features may not work.', 'warning');
+    });
+
+    // Check initial status (don't show toast on load if online)
+    if (!navigator.onLine) {
+        banner.classList.remove('hidden');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

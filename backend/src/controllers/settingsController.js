@@ -1,11 +1,22 @@
-const { MongoClient } = require('mongodb');
+/**
+ * Settings Controller
+ *
+ * Fixed:
+ * - C-01: Uses connection manager instead of creating new connections
+ * - C-11: Sanitizes error messages for production
+ */
+const { getCollection } = require('../db/connection');
 
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/saleshub';
-const client = new MongoClient(uri);
+const isProduction = process.env.NODE_ENV === 'production';
 
-async function getCollection(collectionName = 'settings') {
-  await client.connect();
-  return client.db('saleshub').collection(collectionName);
+/**
+ * Sanitize error for response (C-11)
+ */
+function sanitizeError(error) {
+  if (isProduction) {
+    return { error: 'Internal Server Error', message: 'An unexpected error occurred' };
+  }
+  return { error: error.name || 'Error', message: error.message };
 }
 
 /**
@@ -13,7 +24,7 @@ async function getCollection(collectionName = 'settings') {
  */
 async function getSettings(req, res) {
   try {
-    const collection = await getCollection();
+    const collection = await getCollection('settings');
     let settings = await collection.findOne({ type: 'global' });
 
     // Default settings if none exist
@@ -30,7 +41,8 @@ async function getSettings(req, res) {
 
     res.json(settings);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Settings] Get error:', error.message);
+    res.status(500).json(sanitizeError(error));
   }
 }
 
@@ -39,15 +51,16 @@ async function getSettings(req, res) {
  */
 async function updateSettings(req, res) {
   try {
-    const collection = await getCollection();
-    const result = await collection.updateOne(
+    const collection = await getCollection('settings');
+    await collection.updateOne(
       { type: 'global' },
       { $set: { ...req.body, type: 'global', updatedAt: new Date() } },
       { upsert: true }
     );
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Settings] Update error:', error.message);
+    res.status(500).json(sanitizeError(error));
   }
 }
 
@@ -77,7 +90,8 @@ async function getBranding(req, res) {
 
     res.json(branding);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Settings] Get branding error:', error.message);
+    res.status(500).json(sanitizeError(error));
   }
 }
 
@@ -87,14 +101,15 @@ async function getBranding(req, res) {
 async function updateBranding(req, res) {
   try {
     const collection = await getCollection('branding');
-    const result = await collection.updateOne(
+    await collection.updateOne(
       { type: 'branding' },
       { $set: { ...req.body, type: 'branding', updatedAt: new Date() } },
       { upsert: true }
     );
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Settings] Update branding error:', error.message);
+    res.status(500).json(sanitizeError(error));
   }
 }
 

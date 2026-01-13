@@ -9,6 +9,9 @@
  * - Improved error handling for browser disconnection
  * - Fixed: Convert Uint8Array to Buffer for proper response handling
  * - Synced CSS with frontend preview styles (shadow, fonts, footer)
+ * - C-02: Added XSS sanitization for all user data
+ * - H-04: Improved page close error handling with failure tracking
+ * - H-09: Increased font loading timeout to 20 seconds
  */
 
 const puppeteer = require('puppeteer');
@@ -25,10 +28,34 @@ const CONNECTION_ERROR_PATTERNS = [
   'Navigation failed'
 ];
 
+// H-09: Font loading timeout (increased from 10s to 20s)
+const FONT_LOADING_TIMEOUT_MS = 20000;
+
+// H-04: Track page close failures for browser restart decision
+const MAX_PAGE_CLOSE_FAILURES = 3;
+
+/**
+ * C-02: HTML escape function to prevent XSS
+ * Escapes HTML special characters in user-provided data
+ */
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return str.replace(/[&<>"']/g, m => map[m]);
+}
+
 class PuppeteerPdfService {
   constructor() {
     this.browser = null;
     this.browserLock = Promise.resolve(); // Mutex for browser access
+    this.pageCloseFailures = 0; // H-04: Track consecutive page close failures
   }
 
   /**
@@ -67,7 +94,12 @@ class PuppeteerPdfService {
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--font-render-hinting=none'
+                '--font-render-hinting=none',
+                // C-06: Additional performance args
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-sync',
+                '--no-first-run'
               ]
             });
 
@@ -75,8 +107,11 @@ class PuppeteerPdfService {
             this.browser.on('disconnected', () => {
               console.log('[Puppeteer] Browser disconnected event');
               this.browser = null;
+              this.pageCloseFailures = 0; // Reset failure count on disconnect
             });
 
+            // Reset failure count on successful browser launch
+            this.pageCloseFailures = 0;
             console.log('[Puppeteer] Browser launched successfully');
           }
           resolve(this.browser);
@@ -89,7 +124,7 @@ class PuppeteerPdfService {
   }
 
   /**
-   * Force browser restart - used after connection errors
+   * Force browser restart - used after connection errors or repeated failures
    */
   async forceRestartBrowser() {
     console.log('[Puppeteer] Force restarting browser...');
@@ -101,6 +136,7 @@ class PuppeteerPdfService {
       }
     }
     this.browser = null;
+    this.pageCloseFailures = 0;
     return this.getBrowser();
   }
 
@@ -155,7 +191,7 @@ class PuppeteerPdfService {
     try {
       page = await browser.newPage();
 
-      // Generate HTML from template
+      // Generate HTML from template (with XSS protection)
       const html = this.generateHTML(data, branding, template);
 
       // Set content with networkidle0 for complete resource loading
@@ -164,17 +200,18 @@ class PuppeteerPdfService {
         timeout: 30000
       });
 
-      // Wait for fonts with timeout to prevent hanging
+      // H-09: Wait for fonts with increased timeout
       try {
         await Promise.race([
           page.evaluateHandle('document.fonts.ready'),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Font timeout')), 10000)
+            setTimeout(() => reject(new Error('Font timeout')), FONT_LOADING_TIMEOUT_MS)
           )
         ]);
         console.log('[Puppeteer] Fonts loaded successfully');
       } catch (fontError) {
-        console.warn('[Puppeteer] Font loading timeout - PDF may use fallback fonts');
+        console.warn(`[Puppeteer] Font loading timeout after ${FONT_LOADING_TIMEOUT_MS / 1000}s - PDF may use fallback fonts`);
+        // Continue anyway - PDF will use fallback fonts
       }
 
       // Generate PDF
@@ -191,12 +228,24 @@ class PuppeteerPdfService {
       return Buffer.from(pdfData);
 
     } finally {
-      // Safe page close with error handling
+      // H-04: Safe page close with failure tracking
       if (page) {
         try {
           await page.close();
+          // Reset failure count on successful close
+          this.pageCloseFailures = 0;
         } catch (closeError) {
-          console.error('[Puppeteer] Error closing page:', closeError.message);
+          this.pageCloseFailures++;
+          console.error(`[Puppeteer] Error closing page (failure ${this.pageCloseFailures}/${MAX_PAGE_CLOSE_FAILURES}):`, closeError.message);
+
+          // H-04: Force browser restart after repeated failures
+          if (this.pageCloseFailures >= MAX_PAGE_CLOSE_FAILURES) {
+            console.warn('[Puppeteer] Too many page close failures, scheduling browser restart');
+            // Don't await - let it happen in background to not block current request
+            this.forceRestartBrowser().catch(err => {
+              console.error('[Puppeteer] Background browser restart failed:', err.message);
+            });
+          }
         }
       }
     }
@@ -205,16 +254,17 @@ class PuppeteerPdfService {
   /**
    * Generate HTML that matches the live preview
    * CSS synchronized with frontend preview.css and landscape.css
+   * C-02: All user data is escaped to prevent XSS
    */
   generateHTML(data, branding, template) {
-    const primaryColor = branding.primaryColor || '#62c6c1';
-    const companyName = branding.companyName || 'Kennedy Property';
-    const footerText = branding.footerText || 'SALE OFFER';
-    const createdBy = branding.createdBy || '';
+    const primaryColor = escapeHtml(branding.primaryColor) || '#62c6c1';
+    const companyName = escapeHtml(branding.companyName) || 'Kennedy Property';
+    const footerText = escapeHtml(branding.footerText) || 'SALE OFFER';
+    const createdBy = escapeHtml(branding.createdBy) || '';
     const isPortrait = template === 'portrait';
     const isOffPlan = data.category !== 'ready';
 
-    // Format currency helper
+    // Format currency helper (with escaping)
     const formatCurrency = (value) => {
       if (!value) return '-';
       const num = parseFloat(value);
@@ -222,7 +272,7 @@ class PuppeteerPdfService {
       return `AED ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
     };
 
-    // Format area helper
+    // Format area helper (with escaping)
     const formatArea = (value) => {
       if (!value) return '-';
       const num = parseFloat(value);
@@ -230,19 +280,47 @@ class PuppeteerPdfService {
       return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Sq.Ft`;
     };
 
-    // Generate payment plan rows
-    const paymentPlanRows = (data.paymentPlan || []).map(row => `
+    // Generate payment plan rows (C-02: escape all user data)
+    const paymentPlanRows = (data.paymentPlan || []).slice(0, 50).map(row => `
       <tr>
-        <td>${row.date || '-'}</td>
-        <td style="text-align: center;">${row.percentage || '-'}%</td>
+        <td>${escapeHtml(row.date) || '-'}</td>
+        <td style="text-align: center;">${escapeHtml(row.percentage) || '-'}%</td>
         <td style="text-align: right;">${formatCurrency(row.amount)}</td>
       </tr>
     `).join('');
 
-    // Logo HTML
-    const logoHtml = branding.logo
-      ? `<img src="${branding.logo}" alt="Logo" class="logo-img" />`
+    // Logo HTML - base64 data URLs are safe, but escape any other URLs
+    const logoSrc = branding.logo && branding.logo.startsWith('data:')
+      ? branding.logo
+      : escapeHtml(branding.logo || '');
+    const logoHtml = logoSrc
+      ? `<img src="${logoSrc}" alt="Logo" class="logo-img" />`
       : '';
+
+    // C-02: Escape all user-provided data
+    const safeData = {
+      projectName: escapeHtml(data.projectName),
+      unitNo: escapeHtml(data.unitNo),
+      unitType: escapeHtml(data.unitType),
+      unitModel: escapeHtml(data.unitModel),
+      bedrooms: escapeHtml(data.bedrooms),
+      views: escapeHtml(data.views)
+    };
+
+    // Floor plan - only allow data URLs or escaped URLs
+    const floorPlanSrc = data.floorPlanImage && data.floorPlanImage.startsWith('data:')
+      ? data.floorPlanImage
+      : escapeHtml(data.floorPlanImage || '');
+
+    // Label customizations (escaped)
+    const labels = {
+      refund: escapeHtml(branding.labels?.refund) || 'Refund (Amount Paid to Developer)',
+      balance: escapeHtml(branding.labels?.balance) || 'Balance Resale Clause',
+      premium: escapeHtml(branding.labels?.premium) || 'Premium (Selling Price - Original Price)',
+      admin: escapeHtml(branding.labels?.admin) || 'Admin Fees (SAAS)',
+      adgm: escapeHtml(branding.labels?.adgm) || 'ADGM Reg. Fee (2% of Original Price)',
+      agency: escapeHtml(branding.labels?.agency) || 'Agency Fees (2% of Selling Price + VAT)'
+    };
 
     return `
 <!DOCTYPE html>
@@ -250,7 +328,7 @@ class PuppeteerPdfService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${data.projectName || 'Sales Offer'}</title>
+  <title>${safeData.projectName || 'Sales Offer'}</title>
   <!-- SYNCED: Font weights match frontend index.html -->
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
   <style>
@@ -507,7 +585,7 @@ class PuppeteerPdfService {
     </div>
 
     <div class="document-header">
-      <div class="main-title">${data.bedrooms || data.unitModel || '-'}</div>
+      <div class="main-title">${safeData.bedrooms || safeData.unitModel || '-'}</div>
     </div>
 
     <div class="content-row">
@@ -518,15 +596,15 @@ class PuppeteerPdfService {
           <tbody>
             <tr>
               <td>Unit No</td>
-              <td>${data.unitNo || '-'}</td>
+              <td>${safeData.unitNo || '-'}</td>
             </tr>
             <tr>
               <td>Unit Type</td>
-              <td>${data.unitType || '-'}</td>
+              <td>${safeData.unitType || '-'}</td>
             </tr>
             <tr>
               <td>Views</td>
-              <td>${data.views || '-'}</td>
+              <td>${safeData.views || '-'}</td>
             </tr>
             <tr>
               <td>Internal Area</td>
@@ -560,24 +638,24 @@ class PuppeteerPdfService {
             ${isOffPlan ? `
             <tr class="divider-row"><td colspan="2"></td></tr>
             <tr>
-              <td>${branding.labels?.refund || 'Refund (Amount Paid to Developer)'}</td>
+              <td>${labels.refund}</td>
               <td>${formatCurrency(data.refund)}</td>
             </tr>
             <tr>
-              <td>${branding.labels?.balance || 'Balance Resale Clause'}</td>
+              <td>${labels.balance}</td>
               <td>${formatCurrency(data.balanceResale)}</td>
             </tr>
             <tr>
-              <td>${branding.labels?.premium || 'Premium (Selling Price - Original Price)'}</td>
+              <td>${labels.premium}</td>
               <td>${formatCurrency(data.premium)}</td>
             </tr>
             ` : ''}
             <tr>
-              <td>${branding.labels?.admin || 'Admin Fees (SAAS)'}</td>
+              <td>${labels.admin}</td>
               <td>${formatCurrency(data.adminFees)}</td>
             </tr>
             <tr>
-              <td>${branding.labels?.adgm || 'ADGM Reg. Fee (2% of Original Price)'}</td>
+              <td>${labels.adgm}</td>
               <td>${formatCurrency(data.adgmTransfer)}</td>
             </tr>
             ${data.adgmTermination ? `
@@ -593,7 +671,7 @@ class PuppeteerPdfService {
             </tr>
             ` : ''}
             <tr>
-              <td>${branding.labels?.agency || 'Agency Fees (2% of Selling Price + VAT)'}</td>
+              <td>${labels.agency}</td>
               <td>${formatCurrency(data.agencyFees)}</td>
             </tr>
             <tr class="total-row">
@@ -623,13 +701,13 @@ class PuppeteerPdfService {
 
       <div class="column-right">
         <div class="floorplan-frame">
-          ${data.floorPlanImage ? `<img src="${data.floorPlanImage}" alt="Floor Plan" class="floorplan-img" />` : ''}
+          ${floorPlanSrc ? `<img src="${floorPlanSrc}" alt="Floor Plan" class="floorplan-img" />` : ''}
         </div>
       </div>
     </div>
 
     <div class="footer-area">
-      <div class="footer-proj">${data.projectName || '-'}</div>
+      <div class="footer-proj">${safeData.projectName || '-'}</div>
       <div class="footer-sub">${footerText}</div>
     </div>
 
@@ -651,6 +729,7 @@ class PuppeteerPdfService {
         console.error('[Puppeteer] Error closing browser:', error.message);
       }
       this.browser = null;
+      this.pageCloseFailures = 0;
     }
   }
 }
