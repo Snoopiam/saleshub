@@ -51,6 +51,7 @@ EXCLUDE_PATTERNS=(
     '\.env\.example$'
     '\.env\.template$'
     'package-lock\.json$'
+    'scripts/hooks/'
 )
 
 FOUND_SECRETS=0
