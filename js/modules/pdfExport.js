@@ -181,6 +181,60 @@ async function getLogoFromDOM() {
 }
 
 /**
+ * Compress image if it exceeds size limit
+ * Prevents 413 Payload Too Large errors on PDF generation
+ * @param {string} base64Image - Base64 encoded image
+ * @param {number} maxSizeKB - Maximum size in KB (default 8000 = 8MB)
+ * @param {number} quality - JPEG quality (0-1, default 0.85)
+ * @returns {Promise<string>} Compressed base64 image
+ */
+async function compressImageIfNeeded(base64Image, maxSizeKB = 8000, quality = 0.85) {
+  if (!base64Image || !base64Image.startsWith('data:image')) {
+    return base64Image;
+  }
+
+  // Calculate current size in KB
+  const base64Data = base64Image.split(',')[1] || base64Image;
+  const currentSizeKB = Math.floor((base64Data.length * 3) / 4 / 1024);
+
+  // If under limit, return as-is
+  if (currentSizeKB <= maxSizeKB) {
+    console.log(`[PDF Export] Image is ${currentSizeKB}KB, under ${maxSizeKB}KB limit`);
+    return base64Image;
+  }
+
+  console.log(`[PDF Export] Compressing image from ${currentSizeKB}KB to under ${maxSizeKB}KB`);
+  showLoading(`Compressing image (${currentSizeKB}KB -> ${maxSizeKB}KB)...`);
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+
+      // Calculate scale factor to reduce dimensions proportionally
+      const ratio = Math.sqrt(maxSizeKB / currentSizeKB) * 0.9; // 0.9 safety margin
+      canvas.width = Math.floor(img.width * ratio);
+      canvas.height = Math.floor(img.height * ratio);
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Convert to JPEG for better compression
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      const newSizeKB = Math.floor((compressed.split(',')[1].length * 3) / 4 / 1024);
+      console.log(`[PDF Export] Compressed to ${newSizeKB}KB (${canvas.width}x${canvas.height})`);
+
+      resolve(compressed);
+    };
+    img.onerror = () => {
+      console.warn('[PDF Export] Failed to compress image, using original');
+      resolve(base64Image);
+    };
+    img.src = base64Image;
+  });
+}
+
+/**
  * Get original quality images for PDF export
  * M-11: Shows progress during image loading
  * Uses IndexedDB for persistent storage, falls back to window.originalImages, localStorage, or DOM
@@ -243,6 +297,15 @@ async function getOriginalImagesForPDF(data, branding) {
     }
   } catch (error) {
     console.warn('[PDF Export] Could not get logo:', error.message);
+  }
+
+  // Compress images if they exceed size limits to prevent 413 errors
+  // Floor plan: max 8MB, Logo: max 2MB
+  if (pdfData.floorPlanImage) {
+    pdfData.floorPlanImage = await compressImageIfNeeded(pdfData.floorPlanImage, 8000);
+  }
+  if (pdfBranding.logo) {
+    pdfBranding.logo = await compressImageIfNeeded(pdfBranding.logo, 2000);
   }
 
   return { pdfData, pdfBranding };

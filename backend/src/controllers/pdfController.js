@@ -17,8 +17,8 @@ const REQUEST_TIMEOUT_MS = 60000;
 // H-08: Maximum payment plan rows allowed
 const MAX_PAYMENT_PLAN_ROWS = 50;
 
-// H-10: Maximum image size (5MB)
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+// H-10: Maximum image size (10MB - increased to support high-quality floor plans)
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
  * Generate high-quality PDF with real selectable text

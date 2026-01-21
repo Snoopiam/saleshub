@@ -53,7 +53,7 @@ server.js                    # Express server (frontend + API)
 ### Dual Storage Strategy
 
 Images are stored in two versions to manage localStorage quota:
-- **Original quality**: `window.originalImages` (memory) - used for PDF export
+- **Original quality**: `window.originalImages` (memory) + IndexedDB (`imageStorage.js`) - used for PDF export
 - **Compressed**: localStorage - used for preview/auto-save
 
 ### Key Patterns
@@ -89,4 +89,22 @@ Tests in `tests/` use Vitest with jsdom environment. Test files mirror module st
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/pdf/generate` | POST | Generate PDF (body: `{data, branding, template}`) |
-| `/health` | GET | Health check |
+| `/api/templates` | GET/POST | List or save templates |
+| `/api/templates/:id` | GET/PUT/DELETE | Template CRUD |
+| `/api/settings` | GET/POST | App settings |
+| `/health` | GET | Health check (MongoDB/Puppeteer status) |
+| `/metrics` | GET | Performance metrics |
+| `/api/pdf/queue-status` | GET | PDF generation queue status |
+
+## Rate Limits
+
+- PDF generation: 20 requests / 15 minutes
+- General API: 100 requests / 15 minutes
+
+## Environment Variables
+
+```env
+PORT=8000                                    # Server port (default: 8000)
+NODE_ENV=development                         # development | production
+MONGODB_URI=mongodb://localhost:27017/saleshub  # Optional, for templates
+```

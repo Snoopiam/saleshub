@@ -117,8 +117,8 @@ app.use((req, res, next) => {
 // =============================================================================
 // BODY PARSER (C-07: Reduced from 50mb to 10mb)
 // =============================================================================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // =============================================================================
 // RATE LIMITING (C-03)

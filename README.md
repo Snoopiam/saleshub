@@ -21,16 +21,16 @@ Professional real estate sales offer document generator for UAE properties. Crea
 
 ## Property Types Supported
 
-| Category | Description |
-|----------|-------------|
+| Category            | Description                                      |
+| ------------------- | ------------------------------------------------ |
 | **Off-Plan Resale** | Properties under construction with payment plans |
-| **Ready Property** | Completed properties with occupancy status |
+| **Ready Property**  | Completed properties with occupancy status       |
 
-| Unit Type | Area Fields |
-|-----------|-------------|
-| Standard (Apartments) | Internal + Balcony |
-| Villa/Townhouse | Internal + Terrace + BUA + GFA + Plot Size |
-| Plot | Plot Size + Allowed Build Area |
+| Unit Type             | Area Fields                                |
+| --------------------- | ------------------------------------------ |
+| Standard (Apartments) | Internal + Balcony                         |
+| Villa/Townhouse       | Internal + Terrace + BUA + GFA + Plot Size |
+| Plot                  | Plot Size + Allowed Build Area             |
 
 ## Quick Start
 
@@ -119,30 +119,34 @@ SalesHUB/
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/pdf/generate` | POST | Generate PDF from data |
-| `/api/templates` | GET | List all templates |
-| `/api/templates/:id` | GET | Get template by ID |
-| `/api/templates` | POST | Save new template |
-| `/api/templates/:id` | PUT | Update template |
-| `/api/templates/:id` | DELETE | Delete template |
-| `/api/settings` | GET/POST | App settings |
-| `/health` | GET | Health check with MongoDB/Puppeteer status |
-| `/metrics` | GET | Performance metrics |
-| `/queue-status` | GET | PDF queue status |
+| Endpoint             | Method   | Description                                |
+| -------------------- | -------- | ------------------------------------------ |
+| `/api/pdf/generate`  | POST     | Generate PDF from data                     |
+| `/api/templates`     | GET      | List all templates                         |
+| `/api/templates/:id` | GET      | Get template by ID                         |
+| `/api/templates`     | POST     | Save new template                          |
+| `/api/templates/:id` | PUT      | Update template                            |
+| `/api/templates/:id` | DELETE   | Delete template                            |
+| `/api/settings`      | GET/POST | App settings                               |
+| `/health`            | GET      | Health check with MongoDB/Puppeteer status |
+| `/metrics`           | GET      | Performance metrics                        |
+| `/queue-status`      | GET      | PDF queue status                           |
 
 ### PDF Generation Example
 
 ```javascript
-const response = await fetch('/api/pdf/generate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+const response = await fetch("/api/pdf/generate", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    data: { /* property data */ },
-    branding: { /* logo, colors */ },
-    template: 'landscape'
-  })
+    data: {
+      /* property data */
+    },
+    branding: {
+      /* logo, colors */
+    },
+    template: "landscape",
+  }),
 });
 const blob = await response.blob();
 ```
@@ -181,12 +185,12 @@ npm run test:coverage
 
 Libraries loaded via CDN with SRI hashes:
 
-| Library | Version | Purpose |
-|---------|---------|---------|
-| Tailwind CSS | 3.x | Utility CSS classes |
-| SheetJS (xlsx) | 0.18.5 | Excel import/export |
-| html2pdf.js | 0.12.1 | Legacy PDF generation |
-| SortableJS | 1.15.6 | Drag-and-drop |
+| Library        | Version | Purpose               |
+| -------------- | ------- | --------------------- |
+| Tailwind CSS   | 3.x     | Utility CSS classes   |
+| SheetJS (xlsx) | 0.18.5  | Excel import/export   |
+| html2pdf.js    | 0.12.1  | Legacy PDF generation |
+| SortableJS     | 1.15.6  | Drag-and-drop         |
 
 ## Environment Variables
 
@@ -209,23 +213,23 @@ MONGODB_URI=mongodb://localhost:27017/saleshub
 ## Browser Support
 
 | Browser | Version |
-|---------|---------|
-| Chrome | >= 80 |
-| Firefox | >= 75 |
-| Safari | >= 13 |
-| Edge | >= 80 |
+| ------- | ------- |
+| Chrome  | >= 80   |
+| Firefox | >= 75   |
+| Safari  | >= 13   |
+| Edge    | >= 80   |
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Backend Setup](BACKEND_SETUP.md) | Server configuration guide |
-| [User Manual](docs/USER_MANUAL.md) | End-user guide |
-| [Field Reference](docs/FIELD_REFERENCE.md) | Complete field mapping |
-| [CSS Style Guide](docs/CSS_STYLE_GUIDE.md) | Styling reference |
-| [PDF Workflow](docs/PDF_GENERATION_WORKFLOW.md) | PDF generation details |
-| [Browser Compatibility](docs/BROWSER_COMPATIBILITY.md) | Cross-browser guide |
-| [TypeScript Migration](docs/TYPESCRIPT_MIGRATION_PLAN.md) | Future TS migration plan |
+| Document                                                  | Description                |
+| --------------------------------------------------------- | -------------------------- |
+| [Backend Setup](BACKEND_SETUP.md)                         | Server configuration guide |
+| [User Manual](docs/USER_MANUAL.md)                        | End-user guide             |
+| [Field Reference](docs/FIELD_REFERENCE.md)                | Complete field mapping     |
+| [CSS Style Guide](docs/CSS_STYLE_GUIDE.md)                | Styling reference          |
+| [PDF Workflow](docs/PDF_GENERATION_WORKFLOW.md)           | PDF generation details     |
+| [Browser Compatibility](docs/BROWSER_COMPATIBILITY.md)    | Cross-browser guide        |
+| [TypeScript Migration](docs/TYPESCRIPT_MIGRATION_PLAN.md) | Future TS migration plan   |
 
 ## Contributing
 
