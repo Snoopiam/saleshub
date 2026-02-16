@@ -36,9 +36,14 @@ const LABEL_TO_FIELD = {
     'resale clause': 'input-resale-clause',
     'balance resale clause (aed)': 'input-balance-resale',
     'admin fees (saas)': 'input-admin-fees',
+    // ADGM variants (Ready properties - Abu Dhabi)
     'adgm (2% of original price)': 'input-adgm-transfer',
     'adgm termination fee': 'input-adgm-termination-fee',
     'adgm electronic service fee': 'input-adgm-electronic-fee',
+    // ADM variants (Offplan properties - Dubai) - map to same fields
+    'adm (2% of selling price)': 'input-adgm-transfer',
+    'adm termination fee': 'input-adgm-termination-fee',
+    'adm electronic service fee': 'input-adgm-electronic-fee',
     'agency fees (2% of selling price + vat)': 'input-agency-fees'
 };
 
