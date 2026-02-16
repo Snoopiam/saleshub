@@ -37,6 +37,10 @@ nul
 ~$*
 tmpclaude-*
 
+# Documentation and images (local only)
+docs/
+images/
+
 # Claude Code
 .claude/
 code-agent/
